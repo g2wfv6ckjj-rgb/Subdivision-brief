@@ -1,0 +1,33 @@
+{
+  "built": "2026-09-22",
+  "zori": {
+    "source": "Zillow ZORI",
+    "as_of": "2026-07-31",
+    "zips": 193
+  },
+  "zhvi": {
+    "source": "Zillow ZHVI",
+    "as_of": "2026-07-31",
+    "zips": 416
+  },
+  "pep": {
+    "source": "Census Population Estimates",
+    "as_of": "2025",
+    "counties": 64
+  },
+  "acs": {
+    "source": "ACS 5-year S0101",
+    "as_of": "2024",
+    "zctas": 530
+  },
+  "crosswalk": {
+    "source": "HUD USPS ZIP crosswalk",
+    "as_of": "2026Q2"
+  },
+  "employment": {
+    "source": "BLS/FRED state and metro employment",
+    "as_of": "2025",
+    "cbsas": 7,
+    "note": "8 series total: 7 metro + statewide fallback"
+  }
+}

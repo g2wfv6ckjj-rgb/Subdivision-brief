@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Agents</h1>
+  <p class="sub">Disabling an agent here ends their access immediately — including any browser session already open.</p>
+  <table>
+    <thead><tr><th>Name</th><th>Email</th><th>Office</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for a in agents %}
+      <tr>
+        <td>{{ a.name }}{% if a.is_admin %} <span class="mono" style="color:var(--soft)">(admin)</span>{% endif %}</td>
+        <td class="mono">{{ a.email }}</td>
+        <td>{{ a.office or '—' }}</td>
+        <td><span class="pill {{ 'on' if a.active else 'off' }}">{{ 'Active' if a.active else 'Disabled' }}</span></td>
+        <td style="white-space:nowrap">
+          {% if a.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin_toggle_agent', agent_id=a.id) }}" style="display:inline">
+            <button class="btn {{ 'danger' if a.active else 'secondary' }}" type="submit"
+              style="margin:0;padding:5px 10px;font-size:12.5px">
+              {{ 'Disable' if a.active else 'Re-enable' }}
+            </button>
+          </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin_reset_agent', agent_id=a.id) }}" style="display:inline">
+            <button class="btn secondary" type="submit" style="margin:0;padding:5px 10px;font-size:12.5px">
+              Reset password
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Add an agent</h2>
+  <form method="post" action="{{ url_for('admin_create_agent') }}">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" required>
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required>
+    <label for="office">Office <span style="text-transform:none;font-weight:400">(optional)</span></label>
+    <input type="text" id="office" name="office">
+    <button class="btn" type="submit">Create agent</button>
+  </form>
+</div>
+{% endblock %}

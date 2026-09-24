@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Generate a brief{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Generate a brief</h1>
+  <p class="sub">Upload a 365-day MLS subdivision activity export. Takes about a minute to build.</p>
+  <form method="post" action="{{ url_for('generate') }}" enctype="multipart/form-data">
+    <label for="csv_file">MLS export (.csv)</label>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+
+    <label for="subdivision">Subdivision name</label>
+    <input type="text" id="subdivision" name="subdivision" placeholder="Hilltop" required>
+
+    <label for="city">City, State</label>
+    <input type="text" id="city" name="city" placeholder="Denver, CO" required>
+
+    <div class="checkline">
+      <input type="checkbox" id="carousel" name="carousel" checked>
+      <label for="carousel" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Also generate the social carousel (6 slides)
+      </label>
+    </div>
+    <div class="checkline">
+      <input type="checkbox" id="postcard" name="postcard">
+      <label for="postcard" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Also generate the print postcard (all 3 front designs)
+      </label>
+    </div>
+
+    <button class="btn" type="submit">Generate</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Your recent reports</h2>
+  {% if reports %}
+  <table>
+    <thead><tr><th>Subdivision</th><th>City</th><th>Generated</th><th></th></tr></thead>
+    <tbody>
+      {% for r in reports %}
+      <tr>
+        <td>{{ r.subdivision }}</td>
+        <td>{{ r.city }}</td>
+        <td class="mono">{{ r.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</td>
+        <td><a href="{{ url_for('report_detail', report_id=r.id) }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="sub" style="margin:0">Nothing yet — generate your first brief above.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Subdivision Brief{% endblock %}</title>
+<style>
+:root{
+  --ink:#10203A; --pine:#1F4B87; --soft:#56657A; --yel:#FFC629;
+  --line:#D7DFE9; --paper:#FFFFFF; --bg:#F4F7FB;
+  --err:#B3261E; --ok:#1F6B3E;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Poppins",system-ui,sans-serif;line-height:1.45}
+a{color:var(--pine)}
+header{background:var(--paper);border-bottom:1px solid var(--line);
+  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:10}
+header .brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
+header .brand span{color:var(--pine)}
+header nav{display:flex;gap:14px;align-items:center;font-size:14px}
+header nav form{margin:0}
+header nav button{background:none;border:none;color:var(--soft);
+  font-family:inherit;font-size:14px;cursor:pointer;padding:0}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;
+  padding:24px;margin-bottom:20px}
+h1{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+h2{font-size:17px;margin:0 0 14px}
+.sub{color:var(--soft);font-size:14px;margin:0 0 20px}
+label{display:block;font-size:12.5px;font-weight:600;letter-spacing:.03em;
+  color:var(--soft);text-transform:uppercase;margin:14px 0 5px}
+input[type=text],input[type=email],input[type=password],input[type=file]{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
+  font-family:inherit;font-size:15px;background:var(--paper);color:var(--ink)}
+input[type=checkbox]{margin-right:8px}
+.checkline{display:flex;align-items:center;margin-top:12px;font-size:14.5px}
+.btn{display:inline-block;background:var(--ink);color:#fff;border:none;
+  padding:11px 20px;border-radius:6px;font-family:inherit;font-size:14.5px;
+  font-weight:600;cursor:pointer;margin-top:18px}
+.btn:hover{opacity:.92}
+.btn.secondary{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--paper);color:var(--err);border:1px solid var(--err)}
+.flash{padding:12px 14px;border-radius:6px;font-size:14px;margin-bottom:16px}
+.flash.error{background:#FBEAE9;color:var(--err);border:1px solid #F1C2BE}
+.flash.success{background:#E9F5EE;color:var(--ok);border:1px solid #BFE3CC}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--soft);padding:8px 6px;border-bottom:2px solid var(--ink)}
+td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;
+  border-radius:99px;letter-spacing:.03em}
+.pill.on{background:#E9F5EE;color:var(--ok)}
+.pill.off{background:#F1F2F5;color:var(--soft)}
+.filelist{list-style:none;padding:0;margin:0}
+.filelist li{padding:10px 0;border-bottom:1px solid var(--line)}
+.filelist li:last-child{border-bottom:none}
+.mono{font-family:"DejaVu Sans Mono",monospace;font-size:12.5px}
+footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Fidelity National Title <span>&middot; Subdivision Brief</span></div>
+  {% if current_user.is_authenticated %}
+  <nav>
+    <span class="mono">{{ current_user.name }}</span>
+    {% if current_user.is_admin %}<a href="{{ url_for('admin_home') }}">Admin</a>{% endif %}
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <form method="post" action="{{ url_for('logout') }}"><button type="submit">Log out</button></form>
+  </nav>
+  {% endif %}
+</header>
+<div class="wrap">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="flash {{ category }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+<footer>Equal Housing Opportunity &middot; www.fntcolorado.com</footer>
+</body>
+</html>

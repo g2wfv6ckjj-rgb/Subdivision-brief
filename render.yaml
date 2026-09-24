@@ -1,0 +1,26 @@
+# Render Blueprint. Render reads this file automatically and sets up the
+# service, the persistent disk, and a small on-screen form for the four
+# values below -- no manual dashboard configuration needed. This is what
+# makes the "New -> Blueprint" flow in the README a real one-click deploy
+# rather than a longer list of settings to fill in by hand.
+services:
+  - type: web
+    name: subdivision-brief
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render makes this up on its own
+      - key: RETENTION_DAYS
+        value: "30"
+      - key: ADMIN_EMAIL
+        sync: false                  # Render asks you to type this in
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        sync: false
+    disk:
+      name: subdivision-brief-data
+      mountPath: /app/instance
+      sizeGB: 1

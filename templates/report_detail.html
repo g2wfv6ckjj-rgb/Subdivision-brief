@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ report.subdivision }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ report.subdivision }}</h1>
+  <p class="sub">{{ report.city }} &middot; generated {{ report.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</p>
+  <ul class="filelist">
+    {% for f in files %}
+    <li>
+      <a href="{{ url_for('download', report_id=report.id, filename=f) }}">{{ f }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  <a class="btn secondary" href="{{ url_for('dashboard') }}">&larr; Back to dashboard</a>
+</div>
+{% endblock %}
