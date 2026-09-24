@@ -1,28 +1,35 @@
-# Playwright needs a real headless Chromium, which is why this can't be a
-# plain "pip install -r requirements.txt" buildpack deploy -- it needs a
-# container that can install browser binaries and their OS-level libraries.
-# `playwright install --with-deps` below handles both in one step, provided
-# the base image is Debian/Ubuntu-family (it is).
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Base image: Microsoft's own Playwright-for-Python image. It ships Chromium
+# and every OS-level library Playwright needs ALREADY INSTALLED and
+# version-matched. This replaces the previous approach of installing those
+# dependencies into `python:3.11-slim` ourselves via
+# `playwright install --with-deps chromium`, which is what failed during the
+# first Render deploy (exit code 1, "process ... did not complete
+# successfully"). `python:3.11-slim` is a rolling tag -- the Debian release
+# underneath it moves forward on its own over time -- and the Playwright
+# version pinned in requirements.txt had a dependency-installer script that
+# didn't recognize whatever Debian release Render's build pulled. Starting
+# from Microsoft's own image instead makes that compatibility Microsoft's
+# problem to keep solved, not this Dockerfile's.
+#
+# The Playwright version in requirements.txt MUST match this tag's version
+# exactly (1.57.0 here, 1.57.0 there). Playwright is strict about the Python
+# package matching the installed browser build -- a mismatch here is a
+# different, more confusing failure than the one this fixes, not a smaller
+# version of the same one.
+FROM mcr.microsoft.com/playwright/python:v1.57.0-noble
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install --with-deps chromium
+# No `playwright install` step needed here -- see above; the base image
+# already has a matched Chromium build sitting in it.
 
 COPY . .
-
-RUN mkdir -p instance/reports
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 10000
 
-# Render sets $PORT; default to 10000 for local `docker run` testing.
 # --timeout 180: report generation (PDF + carousel + postcard) genuinely
 # takes tens of seconds, sometimes more on a cold instance -- gunicorn's
 # 30s default would kill the worker mid-request on a slow one.
