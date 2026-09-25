@@ -251,7 +251,7 @@ def from_export(df, zip_col=None):
 
 def top_origins(zip_code, limit=5):
     """Where people moving INTO this ZIP's county came from -- IRS SOI
-    county-to-county inflow, 2021-2022 tax years.
+    county-to-county inflow, 2022-2023 tax years.
 
     COUNTY LEVEL ONLY. No government source publishes migration below the
     county; this is the county the ZIP mostly sits in (zips.csv's county_fips,
@@ -261,7 +261,7 @@ def top_origins(zip_code, limit=5):
     Returns None -- never an empty or guessed list -- when the ZIP isn't in
     the pack, the migration file isn't installed, or the IRS suppressed every
     flow for this county (it drops any flow under 20 returns, which removes
-    14 of Colorado's 64 counties entirely).
+    13 of Colorado's 64 counties entirely).
 
     'people' is the IRS exemption count (their own proxy for persons);
     'households' is the return count. avg_agi is aggregate AGI (reported by
@@ -300,7 +300,7 @@ def top_origins(zip_code, limit=5):
                           if total and total > 0 else None),
         'instate_pct': (round(instate / total * 100)
                         if total and total > 0 and instate and instate > 0 else None),
-        'as_of': vt.get('as_of', '2021-2022'),
+        'as_of': vt.get('as_of', '2022-2023'),
         'source': 'IRS SOI county-to-county migration',
         'origins': top,
     }
