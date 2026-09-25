@@ -19,6 +19,7 @@ unavailable in this sandbox as of this writing. Treat the first real
 generation on the live site as the actual visual check.
 """
 import html as HT
+import re
 
 import buyer_profile
 import census_api
@@ -253,6 +254,32 @@ def _people_section(prop, demo, origins, nn, pay=None):
     return html
 
 
+def _target_areas_section(areas, nn):
+    """Ranked ad-targeting areas (co_data.target_areas) -- the deterministic
+    counterpart of the agent's existing Target ZIP Codes table. COUNTY level,
+    not ZIP; see co_data.target_areas's own docstring for why."""
+    if not areas or not areas.get('areas'):
+        return ''
+    rows = ''.join(
+        f'<tr><td><span class="pillt p{"1" if a["probability"] == "High" else "2" if a["probability"] == "Medium" else "3"}">'
+        f'{a["probability"]}</span></td>'
+        f'<td>{HT.escape(a["place"])}</td>'
+        f'<td>{a["people"]:,}</td>'
+        f'<td>{_money(a["avg_agi"]) if a["avg_agi"] else "n/a"}</td>'
+        f'<td class="cap">{"Near IRS disclosure floor" if a["near_floor"] else ""}</td></tr>'
+        for a in areas['areas'])
+    return (sec(nn(), 'Target Areas for Advertising')
+           + f'<p>Ranked by real people moving into {HT.escape(areas["county"])}, most to least. '
+           'Most digital ad platforms support geo-targeting by county directly.</p>'
+           '<table><thead><tr><th>Probability</th><th>Origin area</th><th>People</th>'
+           '<th>Avg income/hshld</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
+           f'<p class="cap">{HT.escape(areas["source"])}, {HT.escape(areas["as_of"])} tax years. County '
+           'level only \u2014 no government source publishes this by ZIP code, and no live search-behavior '
+           'or moving-company data is used here (unlike a live-research version of this table, which could '
+           'also surface newer, not-yet-completed interest signals this cannot). Probability is this '
+           'report\u2019s own rank-based tier from real IRS counts, not a published confidence score.</p>')
+
+
 def _profile_section(profile, nn):
     """The full Ideal Buyer Profile table (buyer_profile.build_profile).
     Agent-facing only -- nothing here reaches ad copy (rule 74)."""
@@ -271,15 +298,76 @@ def _profile_section(profile, nn):
             'describe the property, never the buyer.</p>')
 
 
+def _field_row(label, budget, value):
+    n = len(value)
+    over = n > budget
+    return (f'<tr><td class="l">{label} <span class="cap" style="margin:0">'
+           f'({n}/{budget})</span></td>'
+           f'<td{" style=\"color:var(--gold)\"" if over else ""}>{HT.escape(value)}</td></tr>')
+
+
+def _email_body_html(body):
+    """__Label__ \u2014 text on its own line becomes a bolded lead-in,
+    matching the agent's existing email format; everything else is a plain
+    paragraph."""
+    out = []
+    for line in body.split('\n\n'):
+        m = re.match(r'^__(.+?)__ \u2014 (.*)$', line, re.S)
+        if m:
+            out.append(f'<p><b>{HT.escape(m.group(1))}</b> &mdash; {HT.escape(m.group(2))}</p>')
+        else:
+            out.append(f'<p>{HT.escape(line)}</p>')
+    return ''.join(out)
+
+
 def _marketing_section(creatives, nn):
-    return (sec(nn(), 'Marketing Blueprint', pb=True)
-           + f'<div class="mkt"><div class="mkl">Digital / Social</div>'
-           f'<div class="mkb" style="white-space:pre-line">{HT.escape(creatives["digital"])}</div></div>'
-           + f'<div class="mkt"><div class="mkl">Print</div>'
-           f'<div class="mkb" style="white-space:pre-line">{HT.escape(creatives["print"])}</div></div>'
-           + f'<div class="mkt"><div class="mkl">Email</div>'
-           f'<div class="mkh">{HT.escape(creatives["email"]["subject"])}</div>'
-           f'<div class="mkb" style="white-space:pre-line">{HT.escape(creatives["email"]["body"])}</div></div>')
+    d = creatives['digital']
+    p = creatives['print']
+    e = creatives['email']
+
+    digital_html = (
+        '<h3>1. Digital Ad (SEO / AI-search optimized)</h3>'
+        '<table class="ibp"><tbody>'
+        + _field_row('Title', d['title_budget'], d['title'])
+        + _field_row('Headline', d['headline_budget'], d['headline'])
+        + _field_row('Description', d['description_budget'], d['description'])
+        + '</tbody></table>')
+
+    loc = f'<p>{HT.escape(p["location_line"])}</p>' if p.get('location_line') else ''
+    print_html = (
+        '<h3>2. Print Creative (postcard / flyer)</h3>'
+        f'<div class="mkt"><div class="mkh">{HT.escape(p["headline"])}</div>'
+        f'<div class="mkb">{HT.escape(p["message"])}</div>{loc}'
+        f'<div class="mkb"><b>{HT.escape(p["price_line"])}</b></div>'
+        f'<div class="mkc">{HT.escape(p["cta"])}</div></div>')
+
+    email_html = (
+        '<h3>3. Email Creative</h3>'
+        '<table class="ibp"><tbody>'
+        + f'<tr><td class="l">Subject line</td><td>{HT.escape(e["subject"])}</td></tr>'
+        + f'<tr><td class="l">Preview line</td><td>{HT.escape(e["preview"])}</td></tr>'
+        + '</tbody></table>'
+        + f'<div class="mkt">{_email_body_html(e["body"])}</div>')
+
+    return (sec(nn(), 'Marketing Creatives', pb=True)
+           + digital_html + print_html + email_html)
+
+
+def _fair_housing_section(nn):
+    return (sec(nn(), 'Fair Housing Compliance Statement')
+           + '<div class="take" style="border-left-color:var(--ok, #1F6B3E)">'
+           '<p>This report\u2019s Ideal Buyer Profile is built exclusively from public economic, migration, '
+           'income, and career data, and describes likely financial qualification and property-driven '
+           'motivations only \u2014 never a protected characteristic. This property is available to all '
+           'qualified buyers on equal terms. Nothing in this report or its marketing creatives expresses '
+           'or implies a preference, limitation, or discrimination based on race, color, religion, sex, '
+           'national origin, disability, familial status, or any other protected class. Pricing commentary '
+           'reflects general market analysis, not a guarantee of future value.</p>'
+           '<p><b>Advertising note:</b> school names are referenced as factual, verifiable assignments only; '
+           'buyers should confirm boundaries with the district directly. The household-composition and '
+           'age-range rows in the Ideal Buyer Profile are internal planning context and must never be used '
+           'for ad targeting or appear in advertising copy \u2014 see the Marketing Creatives above, which '
+           'describe only the property.</p></div>')
 
 
 def _methodology(prop, comps, has_area, has_demo=False):
@@ -318,15 +406,14 @@ def _methodology(prop, comps, has_area, has_demo=False):
     return f'<p class="note">{" ".join(parts)}</p>'
 
 
-def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=None):
+def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=None, target_areas=None, agent=None):
     """prop: from listing_api.get_property(). comps: from
     listing_api.get_comps(), optional. area: from co_data.resolve([zip]) or
     co_data.from_export(), optional -- Rent to Price / Growth Outlook for
     the property's ZIP, when available.
     """
-    buyer = buyer_profile.classify_buyer(prop, comps=comps, area=area)
     profile = buyer_profile.build_profile(prop, comps, area, demo, careers, origins, core.FIN)
-    creatives = listing_marketing.creatives(prop, buyer)
+    creatives = listing_marketing.creatives(prop, agent=agent)
     nn = _N()
 
     body = (cover(prop)
@@ -335,14 +422,16 @@ def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=Non
            + _comps_section(comps, nn)
            + _neighborhood_section(prop, area, nn)
            + _people_section(prop, demo, origins, nn, pay=profile.get('payment'))
+           + _target_areas_section(target_areas, nn)
            + _profile_section(profile, nn)
            + _marketing_section(creatives, nn)
+           + _fair_housing_section(nn)
            + _methodology(prop, comps, bool(area), has_demo=bool(demo or origins)))
 
     return f'<!doctype html><html><head><meta charset="utf-8"><style>{R.CSS}{LCSS}</style></head><body>{body}</body></html>'
 
 
-def build(address, outdir='/mnt/user-data/outputs'):
+def build(address, outdir='/mnt/user-data/outputs', agent=None):
     """The single entry point a route calls: takes a plain street address,
     does every lookup itself (property details, comps, area context), and
     writes one PDF. Mirrors master.build()'s shape (a path in, a path out)
@@ -380,6 +469,7 @@ def build(address, outdir='/mnt/user-data/outputs'):
         except census_api.CensusAPIError:
             demo = None  # context, not core -- omit the cards, keep the report
     origins = co_data.top_origins(prop['zip']) if prop.get('zip') else None
+    target_areas = co_data.target_areas(prop['zip']) if prop.get('zip') else None
     careers = None
     if prop.get('zip'):
         try:
@@ -387,7 +477,8 @@ def build(address, outdir='/mnt/user-data/outputs'):
         except census_api.CensusAPIError:
             careers = None  # the Career types row is simply omitted
 
-    html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins, careers=careers)
+    html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins, careers=careers,
+                      target_areas=target_areas, agent=agent)
 
     os.makedirs(outdir, exist_ok=True)
     slug = (prop.get('address_line') or 'Listing').replace(' ', '_').replace(',', '')

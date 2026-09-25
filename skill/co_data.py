@@ -304,3 +304,63 @@ def top_origins(zip_code, limit=5):
         'source': 'IRS SOI county-to-county migration',
         'origins': top,
     }
+
+
+def target_areas(zip_code, limit=15):
+    """Ranked list of origin counties for ad-targeting -- the deterministic
+    counterpart of the ideal-buyer-analysis skill's ZIP-probability table.
+
+    COUNTY LEVEL, NOT ZIP. That skill's table named specific target ZIPs by
+    blending IRS county data with two things this pipeline cannot reproduce
+    without a live model: Redfin's proprietary search-origin tool and
+    U-Haul's growth-city marketing list. Picking one ZIP to stand in for a
+    whole county here would be inventing precision the data doesn't have --
+    so this returns the county (or, out of state, "City area, County, ST")
+    and lets an agent target it directly; most ad platforms support
+    county-level geo-targeting natively.
+
+    'probability' is computed purely from each origin's rank and share of
+    identified inflow -- top 5 = High, next 5 = Medium, rest = Low, with any
+    row under 25 returns flagged as near the IRS's own 20-return disclosure
+    floor (its own analogue of the original table's "below disclosure
+    threshold" note).
+    """
+    z = str(zip_code or '').strip()[:5].zfill(5)
+    row = next((r for r in (_load('zips.csv') or []) if r['zip'] == z), None)
+    if not row or not row.get('county_fips'):
+        return None
+    mig = _load('migration.csv')
+    if mig is None:
+        return None
+    hits = [r for r in mig if r['county_fips'] == row['county_fips']]
+    if not hits:
+        return None
+
+    areas = []
+    for r in hits:
+        people, returns, agi = _num(r, 'exemptions'), _num(r, 'returns'), _num(r, 'agi')
+        if not people or people < 0 or not returns or returns < 0:
+            continue
+        areas.append({
+            'place': f"{r['origin_county']}, {r['origin_state']}",
+            'state': r['origin_state'],
+            'people': int(people), 'returns': int(returns),
+            'avg_agi': round(agi * 1000 / returns) if agi and agi > 0 else None,
+            'near_floor': returns < 25,
+        })
+    if not areas:
+        return None
+    areas.sort(key=lambda a: a['people'], reverse=True)
+    areas = areas[:limit]
+    for i, a in enumerate(areas):
+        a['probability'] = 'High' if i < 5 else 'Medium' if i < 10 else 'Low'
+
+    total = _num(hits[0], 'total_people')
+    vt = vintages().get('irs_migration', {})
+    return {
+        'county': (row.get('county_name') or '').replace(', Colorado', ''),
+        'as_of': vt.get('as_of', '2022-2023'),
+        'source': 'IRS SOI county-to-county migration',
+        'total_people': int(total) if total and total > 0 else None,
+        'areas': areas,
+    }

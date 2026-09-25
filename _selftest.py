@@ -210,9 +210,9 @@ print('15. buyer_profile.py classifier (real + synthetic scenarios): OK')
 
 # 16. listing_marketing.py: three creatives, grounded in real property data
 import listing_marketing
-_creatives = listing_marketing.creatives(_prop, _buyer)
-assert '1380 Bellaire St' in _creatives['digital'] and '$650,000' in _creatives['digital']
-assert 'Just listed: 1380 Bellaire St' in _creatives['email']['subject']
+_creatives = listing_marketing.creatives(_prop)
+assert '1380 Bellaire St' in _creatives['print']['message'] and '$650,000' in _creatives['print']['price_line']
+assert 'Northmoor' in _creatives['digital']['headline']
 print('16. listing_marketing.py creatives (real property data): OK')
 
 # 17. listing_report.py: full assembly, real property + real comps + REAL
@@ -264,8 +264,11 @@ print('19. IRS migration + Census parser: OK')
 # 20. Fair Housing: no buyer-type language in any ad creative, and the new
 # sections appear only as agent-facing context.
 import re
-_all = (_creatives['digital'] + _creatives['print'] + _creatives['email']['subject']
-        + _creatives['email']['body']).lower().replace('single-family', '').replace('multi-family', '')
+_all = (_creatives['digital']['title'] + _creatives['digital']['headline'] + _creatives['digital']['description']
+        + _creatives['print']['headline'] + _creatives['print']['message']
+        + (_creatives['print']['location_line'] or '') + _creatives['email']['subject']
+        + _creatives['email']['preview'] + _creatives['email']['body']
+       ).lower().replace('single-family', '').replace('multi-family', '').replace('family room', '')
 for _w in ('family', 'families', 'retiree', 'young', 'couple', 'kids', 'children', 'singles', 'buyer'):
     assert not re.search(rf'\b{_w}\b', _all), f'buyer-type term in ad copy: {_w}'
 _html2 = listing_report.build_html(_prop, comps=_comps, area=_area, demo=_demo, origins=_orig)
@@ -290,5 +293,42 @@ _html3 = listing_report.build_html(_prop, _comps, _area, _demo, _orig, _careers)
 assert f"${_pay['total']:,}" in _html3 and '$4,154' not in _html3, 'two different payment figures in one report'
 assert 'family' not in _pf['persona'].lower() and 'family' not in _pf['persona_line'].lower()
 print('21. Ideal Buyer Profile table (all 9 rows, PITI math, single payment figure): OK')
+
+# 22. Target Areas table (real IRS data, more rows than top_origins, real
+# tier logic) and the rebuilt marketing creatives (structured layout,
+# character budgets, agent personalization, Fair Housing safety).
+_targets = co_data.target_areas('80020')
+assert len(_targets['areas']) >= 10, 'expected the wider migration.csv (20/county), not the old 5-row cap'
+assert _targets['areas'][0]['probability'] == 'High' and _targets['areas'][-1]['probability'] in ('Medium', 'Low')
+_states = {a['state'] for a in _targets['areas']}
+assert _states - {'CO'}, 'expected at least one real out-of-state origin county'
+print('22. co_data.target_areas() (wider IRS list, tiers, out-of-state counties): OK')
+
+_agent = {'name': 'Xiaohui Janecek', 'phone': '303-555-0123', 'email': 'x@fntcolorado.com'}
+_c2 = listing_marketing.creatives(_prop, agent=_agent)
+assert len(_c2['digital']['title']) <= _c2['digital']['title_budget']
+assert len(_c2['digital']['headline']) <= _c2['digital']['headline_budget']
+assert len(_c2['digital']['description']) <= _c2['digital']['description_budget']
+assert 'Xiaohui Janecek' in _c2['print']['cta'] and '303-555-0123' in _c2['print']['cta']
+_c_noagent = listing_marketing.creatives(_prop)
+assert '[Agent Name]' in _c_noagent['print']['cta']
+_allcopy = (_c2['digital']['title'] + _c2['digital']['headline'] + _c2['digital']['description']
+           + _c2['print']['headline'] + _c2['print']['message'] + (_c2['print']['location_line'] or '')
+           + _c2['email']['subject'] + _c2['email']['preview'] + _c2['email']['body']).lower()
+import re as _re
+for _w in ('family', 'families', 'retiree', 'young', 'couple', 'kids', 'children', 'singles', 'buyer'):
+    _scrub = _allcopy.replace('single-family', '').replace('multi-family', '').replace('family room', '')
+    assert not _re.search(rf'\b{_w}\b', _scrub), _w
+print('23. listing_marketing.py structured creatives (budgets, agent info, Fair Housing): OK')
+
+_html4 = listing_report.build_html(_prop, _comps, _area, _demo, _orig, _careers, _targets, _agent)
+assert all(s in _html4 for s in ('Target Areas for Advertising', 'Marketing Creatives', '1. Digital Ad',
+                                  '2. Print Creative', '3. Email Creative', 'Fair Housing Compliance Statement'))
+assert 'Xiaohui Janecek | Fidelity National Title' in _html4
+_plain = _re.sub('<[^>]+>', ' ', _html4).lower().replace('single-family', '').replace(
+    'multi-family', '').replace('familial status', '').replace('family room', '')
+for _w in ('family buyer', 'families', 'retiree', 'young buyer', ' kids ', ' singles'):
+    assert _w not in _plain, f'FH violation in full report: {_w}'
+print('24. Full report assembly with Target Areas + new creatives + Fair Housing section: OK')
 
 print('\nALL CHECKS PASSED')

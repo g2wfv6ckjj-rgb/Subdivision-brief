@@ -310,7 +310,11 @@ def register_routes(app):
         import listing_api
         try:
             import listing_report
-            out_path, prop, comps, area = listing_report.build(address, outdir=str(outdir))
+            # Same brand_dict() pattern the subdivision carousel/postcard use:
+            # None if the agent hasn't set anything up in My Info, so the
+            # marketing creatives fall back to bracketed placeholders.
+            agent_brand = current_user.brand_dict(str(AGENT_ASSETS_DIR))
+            out_path, prop, comps, area = listing_report.build(address, outdir=str(outdir), agent=agent_brand)
             report.city = f"{prop.get('city') or ''}, {prop.get('state') or ''}".strip(', ')
             report.files = Path(out_path).name
             db.session.commit()
