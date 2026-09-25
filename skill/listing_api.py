@@ -137,6 +137,10 @@ def get_property(address, _raw=None):
             'rate': mort.get('rate'),
             'term': mort.get('term'),
         } if mort else None,
+        # Actual annual property tax from the most recent tax_history year --
+        # a real bill, not an estimate. None when the county record is absent.
+        'annual_tax': next((t.get('tax') for t in (d.get('tax_history') or [])
+                            if t.get('tax')), None),
         'flood_zone': flood.get('fema_zone'),
         'flood_score': flood.get('flood_factor_score'),
     }

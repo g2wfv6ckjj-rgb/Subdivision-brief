@@ -201,7 +201,7 @@ print('14. listing_api.py parsing (property details + search/comps, both real fi
 # between rules, not just exercise the happy path once.
 import buyer_profile
 _buyer = buyer_profile.classify_buyer(_prop, comps=_comps, area=None)
-assert _buyer['archetype'] == 'Move-up family buyer'
+assert _buyer['archetype'] == 'Move-up buyer (space + schools)'
 _condo = {'beds': 2, 'sqft': 900, 'property_type': 'condos', 'hoa_fee': 250, 'schools': []}
 _buyer2 = buyer_profile.classify_buyer(_condo)
 assert _buyer2['archetype'] == 'First-time buyer or downsizer'
@@ -222,7 +222,7 @@ _area = co_data.resolve([_prop['zip']]).as_dict()
 _html = listing_report.build_html(_prop, comps=_comps, area=_area)
 assert all(s in _html for s in ['LISTING REPORT', 'The Property', "What It's Worth",
                                  'Nearby Listings', 'The Neighborhood',
-                                 'Who Is The Ideal Buyer', 'Marketing Blueprint'])
+                                 'Ideal Buyer Profile', 'Marketing Blueprint'])
 assert 'disagree by' in _html  # AVM spread disclosure present given the real 664K-826K spread
 print('17. listing_report.py full assembly (real property + comps + area): OK')
 
@@ -272,5 +272,23 @@ _html2 = listing_report.build_html(_prop, comps=_comps, area=_area, demo=_demo, 
 assert 'Who Lives Here' in _html2 and 'For agent planning only' in _html2
 assert 'Who Lives Here' not in listing_report.build_html(_prop, comps=_comps, area=_area)
 print('20. Fair Housing ad-copy check + demographics sections: OK')
+
+# 21. Full Ideal Buyer Profile table: every row present for Broomfield, the
+# payment math is right, and the report shows ONE payment figure.
+_careers = census_api.get_careers('80020', _meta=json.load(open('skill/fixtures/census_dp03_meta_SYNTHETIC.json')),
+                                  _raw=json.load(open('skill/fixtures/census_dp03_SYNTHETIC.json')))
+import core
+_pf = buyer_profile.build_profile(_prop, _comps, _area, _demo, _careers, _orig, core.FIN)
+_labels = [re.sub('<[^>]+>', '', l) for l, _ in _pf['rows']]
+for _want in ('Age range', 'Household composition', 'Income band', 'Career types', 'Current household status',
+              'Core motivations', 'Where they are moving from', 'Lifestyle', 'Data-driven rationale'):
+    assert any(l.startswith(_want) for l in _labels), f'missing profile row: {_want}'
+_pay = _pf['payment']
+assert abs(_pay['pi'] - 3442) <= 2, _pay   # $520K, 30 yr, 6.95%
+assert _pay['tax'] == round(3583 / 12) and _pay['hoa'] == 0
+_html3 = listing_report.build_html(_prop, _comps, _area, _demo, _orig, _careers)
+assert f"${_pay['total']:,}" in _html3 and '$4,154' not in _html3, 'two different payment figures in one report'
+assert 'family' not in _pf['persona'].lower() and 'family' not in _pf['persona_line'].lower()
+print('21. Ideal Buyer Profile table (all 9 rows, PITI math, single payment figure): OK')
 
 print('\nALL CHECKS PASSED')

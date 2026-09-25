@@ -290,9 +290,17 @@ def top_origins(zip_code, limit=5):
         return None
     origins.sort(key=lambda o: o['people'], reverse=True)
     vt = vintages().get('irs_migration', {})
+    total = _num(hits[0], 'total_people')
+    instate = _num(hits[0], 'instate_people')
+    top = origins[:limit]
     return {
         'county': (row.get('county_name') or '').replace(', Colorado', ''),
+        'total_people': int(total) if total and total > 0 else None,
+        'top_share_pct': (round(sum(o['people'] for o in top) / total * 100)
+                          if total and total > 0 else None),
+        'instate_pct': (round(instate / total * 100)
+                        if total and total > 0 and instate and instate > 0 else None),
         'as_of': vt.get('as_of', '2021-2022'),
         'source': 'IRS SOI county-to-county migration',
-        'origins': origins[:limit],
+        'origins': top,
     }

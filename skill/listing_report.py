@@ -23,11 +23,24 @@ import html as HT
 import buyer_profile
 import census_api
 import co_data
+import core
 import dials as DL
 import listing_api
 import listing_marketing
 import reports as R
 from core import Mshort
+
+
+LCSS = r'''
+.persona{border:1.6pt solid var(--pine);background:#F4F7FB;border-radius:3pt;padding:10pt 13pt;margin:9pt 0 10pt}
+.persona .pn{font-family:"Poppins",sans-serif;font-weight:700;font-size:12pt;color:var(--ink)}
+.persona .pl{font-size:10pt;color:#26384F;margin-top:3pt}
+table.ibp{font-size:8.8pt;border:.8pt solid var(--line);margin:4pt 0 6pt;font-family:"Liberation Sans","Helvetica Neue",Arial,sans-serif}
+table.ibp td{white-space:normal;vertical-align:top;border:.8pt solid var(--line);padding:6pt 7pt;line-height:1.4}
+table.ibp td.l{width:27%;background:#E7EEF8;font-family:"Poppins",sans-serif;font-weight:600;color:var(--ink)}
+table.ibp tbody tr:nth-child(even){background:transparent}
+table.ibp b{font-weight:700}
+'''
 
 
 def _N(start=0):
@@ -183,7 +196,7 @@ def _neighborhood_section(prop, area, nn):
     return sec(nn(), 'The Neighborhood') + dials_html + schools_html
 
 
-def _people_section(prop, demo, origins, nn):
+def _people_section(prop, demo, origins, nn, pay=None):
     """Who lives here (Census ACS, ZCTA) and where movers come from (IRS,
     county). Agent-facing context only -- never fed into ad copy (rule 74)."""
     if not demo and not origins:
@@ -208,7 +221,9 @@ def _people_section(prop, demo, origins, nn):
             f'<div class="card"><div class="k">{k}</div><div class="v" style="font-size:15pt">{v}</div></div>'
             for k, v in facts) + '</div>'
 
-        pay = (prop.get('mortgage_estimate') or {}).get('monthly_payment')
+        # Same PITI as the Ideal Buyer Profile's income band -- one payment
+        # figure per report, never RealtyAPI's separate estimate alongside it.
+        pay = (pay or {}).get('total')
         inc = demo.get('median_hh_income')
         if pay and inc:
             share = round(pay * 12 / inc * 100)
@@ -238,19 +253,22 @@ def _people_section(prop, demo, origins, nn):
     return html
 
 
-def _buyer_section(buyer, nn):
-    reasons = ''.join(f'<li>{HT.escape(r)}</li>' for r in buyer['reasons'])
-    notes = ''
-    if buyer['notes']:
-        notes = ('<h3>Also Worth Knowing</h3><ul>'
-                + ''.join(f'<li>{HT.escape(n)}</li>' for n in buyer['notes']) + '</ul>')
-    return (sec(nn(), 'Who Is The Ideal Buyer')
-           + f'<div class="narr"><div class="lead">{HT.escape(buyer["archetype"])}</div>'
-           f'<ul>{reasons}</ul></div>' + notes
-           + '<p class="cap">Built from this property\'s own characteristics -- bed count, size relative '
-           'to nearby listings, school ratings within a fixed radius -- not from any inferred psychographic '
-           'or demographic data. For agent planning only -- advertising should describe the property, never the '
-           'buyer. See this report\'s methodology note for exactly what this is and isn\'t.</p>')
+def _profile_section(profile, nn):
+    """The full Ideal Buyer Profile table (buyer_profile.build_profile).
+    Agent-facing only -- nothing here reaches ad copy (rule 74)."""
+    if not profile or not profile.get('rows'):
+        return ''
+    rows = ''.join(f'<tr><td class="l">{label}</td><td>{text}</td></tr>'
+                   for label, text in profile['rows'])
+    return (sec(nn(), 'Ideal Buyer Profile')
+            + f'<div class="persona"><div class="pn">&ldquo;{HT.escape(profile["persona"])}&rdquo;</div>'
+            + (f'<div class="pl">{profile["persona_line"]}</div>' if profile.get('persona_line') else '')
+            + '</div>'
+            + f'<table class="ibp"><tbody>{rows}</tbody></table>'
+            + '<p class="cap">Every row is built by fixed rules from the figures it cites: this property\'s '
+            'listing data, nearby listings, Census ACS estimates for the ZIP, and IRS county migration. No row is '
+            'AI-generated or inferred from anything not shown. For agent planning only -- advertising should '
+            'describe the property, never the buyer.</p>')
 
 
 def _marketing_section(creatives, nn):
@@ -290,20 +308,24 @@ def _methodology(prop, comps, has_area, has_demo=False):
                      'value come live from the Census Bureau\'s American Community Survey 5-year estimates '
                      'for the property\'s ZCTA. Movers\' origins come from IRS county-to-county migration '
                      'data and describe the county, not the ZIP.')
-    parts.append('<strong>Ideal Buyer Profile.</strong> A deterministic classification built from this '
-                 'property\'s own characteristics against fixed rules -- not AI-generated, not built from '
-                 'demographic or migration data of any kind.')
+    parts.append('<strong>Ideal Buyer Profile.</strong> Assembled by fixed rules, not AI-generated. The income '
+                 'band uses the app\'s dated 30-year rate, this property\'s actual tax bill, an insurance '
+                 'assumption and the real HOA fee. Age, household, career and tenure rows come from Census '
+                 'ACS estimates for the ZIP; origins from IRS county migration; motivations and interests '
+                 'only from what the listing itself states. It describes a likely buyer for planning, not a '
+                 'targeting rule.')
     parts.append('Information deemed reliable but not guaranteed.')
     return f'<p class="note">{" ".join(parts)}</p>'
 
 
-def build_html(prop, comps=None, area=None, demo=None, origins=None):
+def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=None):
     """prop: from listing_api.get_property(). comps: from
     listing_api.get_comps(), optional. area: from co_data.resolve([zip]) or
     co_data.from_export(), optional -- Rent to Price / Growth Outlook for
     the property's ZIP, when available.
     """
     buyer = buyer_profile.classify_buyer(prop, comps=comps, area=area)
+    profile = buyer_profile.build_profile(prop, comps, area, demo, careers, origins, core.FIN)
     creatives = listing_marketing.creatives(prop, buyer)
     nn = _N()
 
@@ -312,12 +334,12 @@ def build_html(prop, comps=None, area=None, demo=None, origins=None):
            + _valuation_section(prop, nn)
            + _comps_section(comps, nn)
            + _neighborhood_section(prop, area, nn)
-           + _people_section(prop, demo, origins, nn)
-           + _buyer_section(buyer, nn)
+           + _people_section(prop, demo, origins, nn, pay=profile.get('payment'))
+           + _profile_section(profile, nn)
            + _marketing_section(creatives, nn)
            + _methodology(prop, comps, bool(area), has_demo=bool(demo or origins)))
 
-    return f'<!doctype html><html><head><meta charset="utf-8"><style>{R.CSS}</style></head><body>{body}</body></html>'
+    return f'<!doctype html><html><head><meta charset="utf-8"><style>{R.CSS}{LCSS}</style></head><body>{body}</body></html>'
 
 
 def build(address, outdir='/mnt/user-data/outputs'):
@@ -358,8 +380,14 @@ def build(address, outdir='/mnt/user-data/outputs'):
         except census_api.CensusAPIError:
             demo = None  # context, not core -- omit the cards, keep the report
     origins = co_data.top_origins(prop['zip']) if prop.get('zip') else None
+    careers = None
+    if prop.get('zip'):
+        try:
+            careers = census_api.get_careers(prop['zip'])
+        except census_api.CensusAPIError:
+            careers = None  # the Career types row is simply omitted
 
-    html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins)
+    html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins, careers=careers)
 
     os.makedirs(outdir, exist_ok=True)
     slug = (prop.get('address_line') or 'Listing').replace(' ', '_').replace(',', '')

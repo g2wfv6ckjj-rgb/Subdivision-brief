@@ -1,59 +1,212 @@
 {
-  "message": "Success",
-  "source": "realtor.com",
-  "detail": {
-    "property_id": "1349250182",
-    "status": "for_sale",
-    "list_price": 650000,
-    "price_per_sqft": 202,
-    "last_sold_price": 65400,
-    "last_sold_date": "1976-08-25",
-    "details": {
-      "beds": 4, "baths": "2.5", "sqft": 3218, "lot_sqft": 10454,
-      "stories": 2, "year_built": 1976, "garage": 2, "type": "single_family",
-      "text": "Bursting with Undeniable Charm and Character..."
-    },
-    "hoa_fee": 0,
-    "tax_history": [{"tax": 3583, "year": 2025, "assessment": {"building": 32160, "land": 10000, "total": 42160}}],
-    "address": {
-      "line": "1380 Bellaire St", "city": "Broomfield", "state_code": "CO",
-      "postal_code": "80020", "latitude": 39.937984, "longitude": -105.060345
-    },
-    "neighborhoods": ["Northmoor Estates"],
-    "county_fips": "08014",
-    "schools": [
-      {"name": "Birch Elementary School", "rating": 8, "distance_in_miles": 0.5, "education_levels": ["elementary"]},
-      {"name": "Aspen Creek K-8 School", "rating": 7, "distance_in_miles": 0.7, "education_levels": ["elementary","middle"]},
-      {"name": "Broomfield High School", "rating": 9, "distance_in_miles": 1, "education_levels": ["high"]},
-      {"name": "Bal Swan Children's Center", "rating": null, "distance_in_miles": 0.2, "education_levels": ["elementary"]},
-      {"name": "Broomfield Heights Middle School", "rating": 5, "distance_in_miles": 0.9, "education_levels": ["middle"]},
-      {"name": "Appletree Christian Preschool", "rating": null, "distance_in_miles": 1.1, "education_levels": ["elementary"]},
-      {"name": "Kohl Elementary School", "rating": 8, "distance_in_miles": 1.4, "education_levels": ["elementary"]},
-      {"name": "Nativity: Faith and Reason", "rating": null, "distance_in_miles": 1.4, "education_levels": ["elementary","middle"]},
-      {"name": "Academy Of Charter Schools", "rating": 6, "distance_in_miles": 2.3, "education_levels": ["elementary","middle","high"]},
-      {"name": "Justice High Charter School", "rating": 4, "distance_in_miles": 3.6, "education_levels": ["middle","high"]}
-    ],
-    "mls": {"id": "DVCO", "name": "REcolorado", "listing_id": "9149916"},
-    "photo_count": 48,
-    "photos": [{"href": "https://ap.rdcpix.com/c5a31f4e1a2e82486fba8891c5f44504l-m2220488700od.jpg", "tags": ["house_view"]}],
-    "mortgage": {
-      "estimate": {"loan_amount": 520000, "monthly_payment": 4154, "down_payment": 130000,
-                   "rate": 0.07232, "term": 30}
-    },
-    "estimates": {
-      "current_values": [
-        {"source": {"type": "quantarium", "name": "Quantarium"}, "estimate": 710176, "isbest_homevalue": true},
-        {"source": {"type": "collateral", "name": "Collateral Analytics"}, "estimate": 826000, "isbest_homevalue": false},
-        {"source": {"type": "corelogic", "name": "Cotality\u2122"}, "estimate": 664300, "isbest_homevalue": false}
-      ],
-      "forecast_values": [
-        {"source": {"type": "quantarium", "name": "Quantarium"},
-         "estimates": [{"estimate": 707998, "date": "2026-10-01"}, {"estimate": 720515, "date": "2027-09-01"}]}
-      ]
-    },
-    "local": {
-      "flood": {"flood_factor_score": 1, "fema_zone": ["X (unshaded)"],
-                "flood_insurance_text": "flood insurance is not federally required..."}
+ "message": "Success",
+ "source": "realtor.com",
+ "detail": {
+  "property_id": "1349250182",
+  "status": "for_sale",
+  "list_price": 650000,
+  "price_per_sqft": 202,
+  "last_sold_price": 65400,
+  "last_sold_date": "1976-08-25",
+  "details": {
+   "beds": 4,
+   "baths": "2.5",
+   "sqft": 3218,
+   "lot_sqft": 10454,
+   "stories": 2,
+   "year_built": 1976,
+   "garage": 2,
+   "type": "single_family",
+   "text": "Bursting with Undeniable Charm and Character, This Lovingly Cared For, Original-Owner Custom Home Sits on a Beautiful Corner Lot Featuring a Spectacular Yard with Gorgeous, Mature Landscaping. Inside, Vintage Fixtures and Stunning Stained Glass Windows Perfectly Complement the Fresh Paint and Newly Installed Carpeting. The Main Floor Boasts a Sunlit Living Room with a Bay Window, Alongside a Spacious Vaulted Family Room Complete with Custom Built-Ins and a Cozy Gas Fireplace. Entertain Effortlessly in the Kitchen's Charming Eating Space with a Pantry, or Host in the Separate Dining Room. A Versatile Main-Floor Office or Bedroom and an Adjacent Bath Complete the Main Level. Upstairs, Discover a Massive Primary Bedroom Offering a Relaxing Sitting Area, a Primary Bath, and Dual Closets-Including a Walk-In Cedar Closet. Two Additional Large Bedrooms and a Full Bath Provide Plenty of Space. The Expansive, Open Unfinished Basement Includes Rough-In Plumbing and a Finished Walk-In Closet, Ready for Your Custom Touch. Perfectly Situated Just Steps from the Park, Lake, and Scenic Trails, This Captivating Home Is Also Wonderfully Close to the Broomfield Rec Center, Sports Fields, and Top-Rated Schools!"
+  },
+  "hoa_fee": 0,
+  "tax_history": [
+   {
+    "tax": 3583,
+    "year": 2025,
+    "assessment": {
+     "building": 32160,
+     "land": 10000,
+     "total": 42160
     }
+   }
+  ],
+  "address": {
+   "line": "1380 Bellaire St",
+   "city": "Broomfield",
+   "state_code": "CO",
+   "postal_code": "80020",
+   "latitude": 39.937984,
+   "longitude": -105.060345
+  },
+  "neighborhoods": [
+   "Northmoor Estates"
+  ],
+  "county_fips": "08014",
+  "schools": [
+   {
+    "name": "Birch Elementary School",
+    "rating": 8,
+    "distance_in_miles": 0.5,
+    "education_levels": [
+     "elementary"
+    ]
+   },
+   {
+    "name": "Aspen Creek K-8 School",
+    "rating": 7,
+    "distance_in_miles": 0.7,
+    "education_levels": [
+     "elementary",
+     "middle"
+    ]
+   },
+   {
+    "name": "Broomfield High School",
+    "rating": 9,
+    "distance_in_miles": 1,
+    "education_levels": [
+     "high"
+    ]
+   },
+   {
+    "name": "Bal Swan Children's Center",
+    "rating": null,
+    "distance_in_miles": 0.2,
+    "education_levels": [
+     "elementary"
+    ]
+   },
+   {
+    "name": "Broomfield Heights Middle School",
+    "rating": 5,
+    "distance_in_miles": 0.9,
+    "education_levels": [
+     "middle"
+    ]
+   },
+   {
+    "name": "Appletree Christian Preschool",
+    "rating": null,
+    "distance_in_miles": 1.1,
+    "education_levels": [
+     "elementary"
+    ]
+   },
+   {
+    "name": "Kohl Elementary School",
+    "rating": 8,
+    "distance_in_miles": 1.4,
+    "education_levels": [
+     "elementary"
+    ]
+   },
+   {
+    "name": "Nativity: Faith and Reason",
+    "rating": null,
+    "distance_in_miles": 1.4,
+    "education_levels": [
+     "elementary",
+     "middle"
+    ]
+   },
+   {
+    "name": "Academy Of Charter Schools",
+    "rating": 6,
+    "distance_in_miles": 2.3,
+    "education_levels": [
+     "elementary",
+     "middle",
+     "high"
+    ]
+   },
+   {
+    "name": "Justice High Charter School",
+    "rating": 4,
+    "distance_in_miles": 3.6,
+    "education_levels": [
+     "middle",
+     "high"
+    ]
+   }
+  ],
+  "mls": {
+   "id": "DVCO",
+   "name": "REcolorado",
+   "listing_id": "9149916"
+  },
+  "photo_count": 48,
+  "photos": [
+   {
+    "href": "https://ap.rdcpix.com/c5a31f4e1a2e82486fba8891c5f44504l-m2220488700od.jpg",
+    "tags": [
+     "house_view"
+    ]
+   }
+  ],
+  "mortgage": {
+   "estimate": {
+    "loan_amount": 520000,
+    "monthly_payment": 4154,
+    "down_payment": 130000,
+    "rate": 0.07232,
+    "term": 30
+   }
+  },
+  "estimates": {
+   "current_values": [
+    {
+     "source": {
+      "type": "quantarium",
+      "name": "Quantarium"
+     },
+     "estimate": 710176,
+     "isbest_homevalue": true
+    },
+    {
+     "source": {
+      "type": "collateral",
+      "name": "Collateral Analytics"
+     },
+     "estimate": 826000,
+     "isbest_homevalue": false
+    },
+    {
+     "source": {
+      "type": "corelogic",
+      "name": "Cotality\u2122"
+     },
+     "estimate": 664300,
+     "isbest_homevalue": false
+    }
+   ],
+   "forecast_values": [
+    {
+     "source": {
+      "type": "quantarium",
+      "name": "Quantarium"
+     },
+     "estimates": [
+      {
+       "estimate": 707998,
+       "date": "2026-10-01"
+      },
+      {
+       "estimate": 720515,
+       "date": "2027-09-01"
+      }
+     ]
+    }
+   ]
+  },
+  "local": {
+   "flood": {
+    "flood_factor_score": 1,
+    "fema_zone": [
+     "X (unshaded)"
+    ],
+    "flood_insurance_text": "flood insurance is not federally required..."
+   }
   }
+ }
 }
