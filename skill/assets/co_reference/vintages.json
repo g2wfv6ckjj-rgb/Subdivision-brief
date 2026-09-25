@@ -29,5 +29,11 @@
     "as_of": "2025",
     "cbsas": 7,
     "note": "8 series total: 7 metro + statewide fallback"
+  },
+  "irs_migration": {
+    "source": "IRS SOI county-to-county inflow",
+    "as_of": "2021-2022",
+    "counties": 50,
+    "note": "14 counties fully suppressed by IRS (<20 returns per flow)"
   }
 }

@@ -21,6 +21,7 @@ generation on the live site as the actual visual check.
 import html as HT
 
 import buyer_profile
+import census_api
 import co_data
 import dials as DL
 import listing_api
@@ -182,6 +183,61 @@ def _neighborhood_section(prop, area, nn):
     return sec(nn(), 'The Neighborhood') + dials_html + schools_html
 
 
+def _people_section(prop, demo, origins, nn):
+    """Who lives here (Census ACS, ZCTA) and where movers come from (IRS,
+    county). Agent-facing context only -- never fed into ad copy (rule 74)."""
+    if not demo and not origins:
+        return ''
+    html = sec(nn(), 'Who Lives Here')
+
+    if demo:
+        facts = []
+        if demo.get('median_hh_income') is not None:
+            facts.append(('MEDIAN HOUSEHOLD INCOME', _money(demo['median_hh_income'])))
+        if demo.get('median_age') is not None:
+            facts.append(('MEDIAN AGE', f"{demo['median_age']:.1f}"))
+        if demo.get('avg_household_size') is not None:
+            facts.append(('AVG HOUSEHOLD SIZE', f"{demo['avg_household_size']:.2f}"))
+        if demo.get('owner_pct') is not None:
+            facts.append(('OWNER-OCCUPIED', f"{demo['owner_pct']:.0f}%"))
+        if demo.get('median_home_value') is not None:
+            facts.append(('MEDIAN HOME VALUE (ACS)', _money(demo['median_home_value'])))
+        if demo.get('population') is not None:
+            facts.append(('POPULATION', f"{demo['population']:,}"))
+        html += '<div class="cards">' + ''.join(
+            f'<div class="card"><div class="k">{k}</div><div class="v" style="font-size:15pt">{v}</div></div>'
+            for k, v in facts) + '</div>'
+
+        pay = (prop.get('mortgage_estimate') or {}).get('monthly_payment')
+        inc = demo.get('median_hh_income')
+        if pay and inc:
+            share = round(pay * 12 / inc * 100)
+            html += (f'<div class="take"><span class="tag">Affordability</span><p>The estimated '
+                     f'{_money(pay)}/mo payment is {share}% of this area\'s median household income '
+                     f'({_money(inc)}/yr), above the common 30% guideline -- a buyer at that income would '
+                     f'likely need a larger down payment or other assets than the estimate assumes.</p></div>'
+                     if share > 30 else
+                     f'<div class="take"><span class="tag">Affordability</span><p>The estimated '
+                     f'{_money(pay)}/mo payment is {share}% of this area\'s median household income '
+                     f'({_money(inc)}/yr).</p></div>')
+        html += (f'<p class="cap">{HT.escape(demo["source"])}, {HT.escape(demo["as_of"])}, '
+                 f'{HT.escape(demo["scope"])} (the Census Bureau\'s approximation of the ZIP). '
+                 f'Estimates carry margins of error that can be wide for smaller areas.</p>')
+
+    if origins:
+        rows = ''.join(
+            f'<tr><td>{HT.escape(o["place"])}</td><td>{o["people"]:,}</td>'
+            f'<td>{o["households"]:,}</td><td>{_money(o["avg_agi"])}</td></tr>'
+            for o in origins['origins'])
+        html += (f'<h3>Where Movers Into {HT.escape(origins["county"])} Came From</h3>'
+                 '<table><thead><tr><th>Moved from</th><th>People</th><th>Households</th>'
+                 '<th>Avg income per household</th></tr></thead><tbody>' + rows + '</tbody></table>'
+                 f'<p class="cap">{HT.escape(origins["source"])}, {HT.escape(origins["as_of"])} tax years. '
+                 'County level -- no source publishes migration by ZIP code. Flows under 20 households '
+                 'are suppressed by the IRS. Income is average adjusted gross income per return.</p>')
+    return html
+
+
 def _buyer_section(buyer, nn):
     reasons = ''.join(f'<li>{HT.escape(r)}</li>' for r in buyer['reasons'])
     notes = ''
@@ -193,7 +249,8 @@ def _buyer_section(buyer, nn):
            f'<ul>{reasons}</ul></div>' + notes
            + '<p class="cap">Built from this property\'s own characteristics -- bed count, size relative '
            'to nearby listings, school ratings within a fixed radius -- not from any inferred psychographic '
-           'or demographic data. See this report\'s methodology note for exactly what this is and isn\'t.</p>')
+           'or demographic data. For agent planning only -- advertising should describe the property, never the '
+           'buyer. See this report\'s methodology note for exactly what this is and isn\'t.</p>')
 
 
 def _marketing_section(creatives, nn):
@@ -207,7 +264,7 @@ def _marketing_section(creatives, nn):
            f'<div class="mkb" style="white-space:pre-line">{HT.escape(creatives["email"]["body"])}</div></div>')
 
 
-def _methodology(prop, comps, has_area):
+def _methodology(prop, comps, has_area, has_demo=False):
     mls_clause = f'This listing itself is carried on {HT.escape(prop["mls_name"])}' if prop.get('mls_name') else ''
     parts = [
         f'<strong>Source.</strong> Property details, valuation estimates, and nearby listings come from '
@@ -228,6 +285,11 @@ def _methodology(prop, comps, has_area):
         parts.append('<strong>Area context</strong> (Rent to Price, Growth Outlook) comes from the same '
                      'bundled Colorado reference pack (Zillow, Census, BLS) used throughout this skill '
                      'family, resolved by this property\'s ZIP code -- not from RealtyAPI.')
+    if has_demo:
+        parts.append('<strong>Who lives here.</strong> Median income, age, household size, tenure and home '
+                     'value come live from the Census Bureau\'s American Community Survey 5-year estimates '
+                     'for the property\'s ZCTA. Movers\' origins come from IRS county-to-county migration '
+                     'data and describe the county, not the ZIP.')
     parts.append('<strong>Ideal Buyer Profile.</strong> A deterministic classification built from this '
                  'property\'s own characteristics against fixed rules -- not AI-generated, not built from '
                  'demographic or migration data of any kind.')
@@ -235,7 +297,7 @@ def _methodology(prop, comps, has_area):
     return f'<p class="note">{" ".join(parts)}</p>'
 
 
-def build_html(prop, comps=None, area=None):
+def build_html(prop, comps=None, area=None, demo=None, origins=None):
     """prop: from listing_api.get_property(). comps: from
     listing_api.get_comps(), optional. area: from co_data.resolve([zip]) or
     co_data.from_export(), optional -- Rent to Price / Growth Outlook for
@@ -250,9 +312,10 @@ def build_html(prop, comps=None, area=None):
            + _valuation_section(prop, nn)
            + _comps_section(comps, nn)
            + _neighborhood_section(prop, area, nn)
+           + _people_section(prop, demo, origins, nn)
            + _buyer_section(buyer, nn)
            + _marketing_section(creatives, nn)
-           + _methodology(prop, comps, bool(area)))
+           + _methodology(prop, comps, bool(area), has_demo=bool(demo or origins)))
 
     return f'<!doctype html><html><head><meta charset="utf-8"><style>{R.CSS}</style></head><body>{body}</body></html>'
 
@@ -288,7 +351,15 @@ def build(address, outdir='/mnt/user-data/outputs'):
         except Exception:
             area = None  # same discipline as co_data's other callers: omit, never guess
 
-    html = build_html(prop, comps=comps, area=area)
+    demo = None
+    if prop.get('zip'):
+        try:
+            demo = census_api.get_demographics(prop['zip'])
+        except census_api.CensusAPIError:
+            demo = None  # context, not core -- omit the cards, keep the report
+    origins = co_data.top_origins(prop['zip']) if prop.get('zip') else None
+
+    html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins)
 
     os.makedirs(outdir, exist_ok=True)
     slug = (prop.get('address_line') or 'Listing').replace(' ', '_').replace(',', '')

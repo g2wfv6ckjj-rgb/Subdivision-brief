@@ -248,4 +248,26 @@ listing_api.get_property = _orig_get_property
 listing_api.get_comps = _orig_get_comps
 print('18. /listing route (real HTTP path, clean failure handling): OK')
 
+# 19. IRS migration (county level, real data) + Census parser (synthetic
+# payload in the documented shape -- the live call is untestable here).
+import census_api
+_orig = co_data.top_origins('80020')
+assert _orig['county'] == 'Broomfield County' and _orig['origins'][0]['place'] == 'Adams County, CO'
+assert co_data.top_origins('99999') is None
+_demo = census_api.get_demographics('80020', _raw=json.load(open('skill/fixtures/census_acs_SYNTHETIC.json')))
+assert _demo['median_hh_income'] == 100000 and _demo['owner_pct'] == 70.0
+print('19. IRS migration + Census parser: OK')
+
+# 20. Fair Housing: no buyer-type language in any ad creative, and the new
+# sections appear only as agent-facing context.
+import re
+_all = (_creatives['digital'] + _creatives['print'] + _creatives['email']['subject']
+        + _creatives['email']['body']).lower().replace('single-family', '').replace('multi-family', '')
+for _w in ('family', 'families', 'retiree', 'young', 'couple', 'kids', 'children', 'singles', 'buyer'):
+    assert not re.search(rf'\b{_w}\b', _all), f'buyer-type term in ad copy: {_w}'
+_html2 = listing_report.build_html(_prop, comps=_comps, area=_area, demo=_demo, origins=_orig)
+assert 'Who Lives Here' in _html2 and 'For agent planning only' in _html2
+assert 'Who Lives Here' not in listing_report.build_html(_prop, comps=_comps, area=_area)
+print('20. Fair Housing ad-copy check + demographics sections: OK')
+
 print('\nALL CHECKS PASSED')

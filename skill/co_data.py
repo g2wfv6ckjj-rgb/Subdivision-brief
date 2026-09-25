@@ -247,3 +247,52 @@ def from_export(df, zip_col=None):
         return resolve([])
     vals = [str(v) for v in df[zip_col].dropna().tolist()]
     return resolve(vals)
+
+
+def top_origins(zip_code, limit=5):
+    """Where people moving INTO this ZIP's county came from -- IRS SOI
+    county-to-county inflow, 2021-2022 tax years.
+
+    COUNTY LEVEL ONLY. No government source publishes migration below the
+    county; this is the county the ZIP mostly sits in (zips.csv's county_fips,
+    the same HUD-crosswalk geography rule as everything else here), never a
+    ZIP-to-ZIP flow. Callers must label it that way.
+
+    Returns None -- never an empty or guessed list -- when the ZIP isn't in
+    the pack, the migration file isn't installed, or the IRS suppressed every
+    flow for this county (it drops any flow under 20 returns, which removes
+    14 of Colorado's 64 counties entirely).
+
+    'people' is the IRS exemption count (their own proxy for persons);
+    'households' is the return count. avg_agi is aggregate AGI (reported by
+    the IRS in thousands) divided by returns -- an average, not a median.
+    """
+    z = str(zip_code or '').strip()[:5].zfill(5)
+    row = next((r for r in (_load('zips.csv') or []) if r['zip'] == z), None)
+    if not row or not row.get('county_fips'):
+        return None
+    mig = _load('migration.csv')
+    if mig is None:
+        return None
+    hits = [r for r in mig if r['county_fips'] == row['county_fips']]
+    origins = []
+    for r in hits:
+        people, returns, agi = _num(r, 'exemptions'), _num(r, 'returns'), _num(r, 'agi')
+        if not people or people < 0 or not returns or returns < 0:
+            continue  # IRS uses -1 for a suppressed cell
+        origins.append({
+            'place': f"{r['origin_county']}, {r['origin_state']}",
+            'people': int(people),
+            'households': int(returns),
+            'avg_agi': round(agi * 1000 / returns) if agi and agi > 0 else None,
+        })
+    if not origins:
+        return None
+    origins.sort(key=lambda o: o['people'], reverse=True)
+    vt = vintages().get('irs_migration', {})
+    return {
+        'county': (row.get('county_name') or '').replace(', Colorado', ''),
+        'as_of': vt.get('as_of', '2021-2022'),
+        'source': 'IRS SOI county-to-county migration',
+        'origins': origins[:limit],
+    }
