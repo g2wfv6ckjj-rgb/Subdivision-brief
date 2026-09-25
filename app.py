@@ -279,6 +279,53 @@ def register_routes(app):
         db.session.commit()
         return redirect(url_for('report_detail', report_id=report.id))
 
+    @app.route('/listing')
+    @login_required
+    def listing_form():
+        return render_template('listing.html')
+
+    @app.route('/listing/generate', methods=['POST'])
+    @login_required
+    def listing_generate():
+        address = request.form.get('address', '').strip()
+        if not address:
+            flash('Enter a property address first.', 'error')
+            return redirect(url_for('listing_form'))
+
+        # Reuses the same Report model as subdivision reports -- subdivision
+        # holds the address, city holds city/state -- rather than adding a
+        # new column. A schema change already broke a real deploy once this
+        # session (see the migration fix); avoiding one here for a purely
+        # cosmetic dashboard-label improvement is the easy, deliberate call.
+        report = Report(agent_id=current_user.id, subdivision=address, city='', files='')
+        db.session.add(report)
+        db.session.commit()
+        outdir = REPORTS_DIR / str(report.id)
+
+        import listing_api
+        try:
+            import listing_report
+            out_path, prop, comps, area = listing_report.build(address, outdir=str(outdir))
+            report.city = f"{prop.get('city') or ''}, {prop.get('state') or ''}".strip(', ')
+            report.files = Path(out_path).name
+            db.session.commit()
+        except listing_api.ListingAPIError as exc:
+            shutil.rmtree(outdir, ignore_errors=True)
+            db.session.delete(report)
+            db.session.commit()
+            flash(f'Could not build this report: {exc}', 'error')
+            return redirect(url_for('listing_form'))
+        except Exception:
+            shutil.rmtree(outdir, ignore_errors=True)
+            db.session.delete(report)
+            db.session.commit()
+            traceback.print_exc()
+            flash('Something went wrong generating this report. '
+                 'Double-check the address, or try again in a moment.', 'error')
+            return redirect(url_for('listing_form'))
+
+        return redirect(url_for('report_detail', report_id=report.id))
+
     @app.route('/reports/<int:report_id>')
     @login_required
     def report_detail(report_id):

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Listing Report{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Listing Report</h1>
+  <p class="sub">Property analysis, ideal buyer profile, and marketing blueprint for one address — a companion to the subdivision brief, built from a live property lookup instead of an MLS export.</p>
+
+  <form method="post" action="{{ url_for('listing_generate') }}">
+    <label for="address">Property address</label>
+    <input type="text" id="address" name="address" placeholder="1380 Bellaire St, Broomfield, CO 80020" required>
+
+    <button class="btn" type="submit">Generate</button>
+  </form>
+  <div class="sub" style="margin:14px 0 0">
+    Property, valuation, and nearby-listing data come from RealtyAPI — an unofficial third-party source, not a licensed MLS feed. Area context (Rent to Price, Growth Outlook) still comes from the same Colorado reference pack used everywhere else. Full detail is in the report's own methodology section.
+  </div>
+</div>
+{% endblock %}

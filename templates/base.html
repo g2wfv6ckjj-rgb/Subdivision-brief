@@ -76,6 +76,7 @@ footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
     <span class="mono">{{ current_user.name }}</span>
     {% if current_user.is_admin %}<a href="{{ url_for('admin_home') }}">Admin</a>{% endif %}
     <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('listing_form') }}">Listing Report</a>
     <a href="{{ url_for('profile') }}">My Info</a>
     <form method="post" action="{{ url_for('logout') }}"><button type="submit">Log out</button></form>
   </nav>

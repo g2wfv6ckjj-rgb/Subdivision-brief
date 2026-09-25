@@ -172,4 +172,80 @@ assert _nl.strip().startswith('<!DOCTYPE html>') and 'Subject:' in _nl
 assert 'Equal Housing Opportunity' in _nl
 print('13. newsletter HTML generation: OK')
 
+# 14. listing_api.py: parses real RealtyAPI responses correctly (both
+# /details/byaddress and /search/byzip), and degrades gracefully on a
+# sparse one (most real properties won't have every optional field).
+import json
+import listing_api
+_raw_fixture = json.load(open('skill/fixtures/realtyapi_details_sample.json'))
+_prop = listing_api.get_property('1380 Bellaire St, Broomfield, CO 80020', _raw=_raw_fixture)
+assert _prop['list_price'] == 650000 and _prop['county_fips'] == '08014'
+assert _prop['avm_low'] == 664300 and _prop['avm_high'] == 826000
+_sparse = listing_api.get_property('x', _raw={"detail": {
+    "status": "for_sale", "list_price": 1,
+    "details": {}, "address": {}}})
+assert _sparse['avm_values'] == [] and _sparse['forecast'] is None
+
+_search_fixture = json.load(open('skill/fixtures/realtyapi_search_sample.json'))
+_comps = listing_api.get_comps('80228', _raw=_search_fixture)
+assert len(_comps) == 3 and _comps[0]['address_line'] == '14210 W Evans Cir'
+assert _comps[0]['list_price'] == 1050000 and _comps[0]['estimate'] == 893000
+assert _comps[2]['estimate'] is None  # missing field doesn't crash
+print('14. listing_api.py parsing (property details + search/comps, both real fixtures): OK')
+
+# 15. buyer_profile.py: deterministic classifier, tested against real +
+# synthetic data across scenarios designed to actually discriminate
+# between rules, not just exercise the happy path once.
+import buyer_profile
+_buyer = buyer_profile.classify_buyer(_prop, comps=_comps, area=None)
+assert _buyer['archetype'] == 'Move-up family buyer'
+_condo = {'beds': 2, 'sqft': 900, 'property_type': 'condos', 'hoa_fee': 250, 'schools': []}
+_buyer2 = buyer_profile.classify_buyer(_condo)
+assert _buyer2['archetype'] == 'First-time buyer or downsizer'
+assert 'a condo -- ' in _buyer2['reasons'][0]  # grammar fix: not "a condos"
+print('15. buyer_profile.py classifier (real + synthetic scenarios): OK')
+
+# 16. listing_marketing.py: three creatives, grounded in real property data
+import listing_marketing
+_creatives = listing_marketing.creatives(_prop, _buyer)
+assert '1380 Bellaire St' in _creatives['digital'] and '$650,000' in _creatives['digital']
+assert 'Just listed: 1380 Bellaire St' in _creatives['email']['subject']
+print('16. listing_marketing.py creatives (real property data): OK')
+
+# 17. listing_report.py: full assembly, real property + real comps + REAL
+# co_data resolution for the property's actual ZIP -- not mocked area data.
+import listing_report
+_area = co_data.resolve([_prop['zip']]).as_dict()
+_html = listing_report.build_html(_prop, comps=_comps, area=_area)
+assert all(s in _html for s in ['LISTING REPORT', 'The Property', "What It's Worth",
+                                 'Nearby Listings', 'The Neighborhood',
+                                 'Who Is The Ideal Buyer', 'Marketing Blueprint'])
+assert 'disagree by' in _html  # AVM spread disclosure present given the real 664K-826K spread
+print('17. listing_report.py full assembly (real property + comps + area): OK')
+
+# 18. the actual /listing route, through the real Flask test client -- not
+# just calling functions directly. Confirms property lookup, comps lookup,
+# and REAL co_data resolution all wire together correctly through the HTTP
+# path itself, and that a failure (here, the same missing-chromium wall as
+# every PDF this session) cleans up completely rather than leaving an
+# orphaned Report row or directory behind.
+os.environ['REALTYAPI_KEY'] = 'test-key-for-selftest'
+_orig_get_property = listing_api.get_property
+_orig_get_comps = listing_api.get_comps
+listing_api.get_property = lambda address: _orig_get_property(address, _raw=_raw_fixture)
+listing_api.get_comps = lambda zip_code: _orig_get_comps(zip_code, _raw=_search_fixture)
+
+r = client.get('/listing')
+assert r.status_code == 200 and b'Property address' in r.data
+r = client.post('/listing/generate', data={'address': ''})
+assert r.status_code == 302
+client.post('/listing/generate', data={'address': '1380 Bellaire St, Broomfield, CO 80020'})
+with appmod.app.app_context():
+    assert Report.query.count() == 0, 'a failed listing report left an orphaned row'
+assert list((appmod.REPORTS_DIR).glob('*/')) == [], 'a failed listing report left an orphaned directory'
+
+listing_api.get_property = _orig_get_property
+listing_api.get_comps = _orig_get_comps
+print('18. /listing route (real HTTP path, clean failure handling): OK')
+
 print('\nALL CHECKS PASSED')

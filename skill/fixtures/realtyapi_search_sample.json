@@ -1,0 +1,47 @@
+{
+  "message": "Success", "source": "realtor.com", "total": 155, "nextPage": true, "resultCount": 3,
+  "searchResults": [
+    {
+      "property_id": "2894678447", "status": "for_sale", "list_price": 1050000,
+      "list_date": "2026-09-24T16:52:25.000000Z",
+      "last_sold_date": "1998-07-24", "last_sold_price": 282000,
+      "price_reduced_amount": null, "price_reduced_date": null,
+      "beds": 4, "baths": "3.5", "sqft": 3550, "lot_sqft": 12632,
+      "property_type": "single_family",
+      "address": {"line": "14210 W Evans Cir", "city": "Lakewood", "state_code": "CO", "postal_code": "80228"},
+      "county": "Jefferson",
+      "primary_photo": "https://ap.rdcpix.com/example1.jpg", "photo_count": 49,
+      "photos": ["http://ap.rdcpix.com/example1.jpg", "http://ap.rdcpix.com/example1b.jpg"],
+      "advertisers": [{"name": "Susan Konsella", "type": "seller", "office": "Premier Choice Realty"}],
+      "estimate": 893000
+    },
+    {
+      "property_id": "2762961714", "status": "for_sale", "list_price": 250000,
+      "list_date": "2026-09-14T19:33:29.000000Z",
+      "last_sold_date": "2023-03-23", "last_sold_price": 355000,
+      "price_reduced_amount": null, "price_reduced_date": null,
+      "beds": 2, "baths": "2", "sqft": 1072, "lot_sqft": null,
+      "property_type": "condos",
+      "address": {"line": "211 Wright St Apt 104", "city": "Denver", "state_code": "CO", "postal_code": "80228"},
+      "county": "Jefferson",
+      "primary_photo": "https://ap.rdcpix.com/example2.jpg", "photo_count": 12,
+      "photos": ["http://ap.rdcpix.com/example2.jpg"],
+      "advertisers": [{"name": "REED THOMAS A", "type": "seller", "office": "Keller Williams Dtc"}],
+      "estimate": 340700
+    },
+    {
+      "property_id": "2519-orion", "status": "for_sale", "list_price": 675000,
+      "list_date": "2026-09-03T16:33:28.000000Z",
+      "last_sold_date": null, "last_sold_price": null,
+      "price_reduced_amount": null, "price_reduced_date": null,
+      "beds": 3, "baths": "2.5", "sqft": 2071, "lot_sqft": 1742,
+      "property_type": "townhomes",
+      "address": {"line": "2519 S Orion St Lot 22", "city": "Lakewood", "state_code": "CO", "postal_code": "80228"},
+      "county": "Jefferson",
+      "primary_photo": "https://ap.rdcpix.com/example3.jpg", "photo_count": 38,
+      "photos": ["http://ap.rdcpix.com/example3.jpg"],
+      "advertisers": [{"name": "Abigail Barratt", "type": "seller", "office": "COMPASS"}],
+      "estimate": null
+    }
+  ]
+}
