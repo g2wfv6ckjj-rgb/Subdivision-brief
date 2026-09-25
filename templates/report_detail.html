@@ -11,6 +11,13 @@
     </li>
     {% endfor %}
   </ul>
-  <a class="btn secondary" href="{{ url_for('dashboard') }}">&larr; Back to home</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+    {% if can_revise %}
+    <a class="btn" href="{{ url_for('subdivision_form', revise=report.id) }}">&larr; Revise options &amp; regenerate</a>
+    {% elif is_listing %}
+    <a class="btn" href="{{ url_for('listing_form') }}">&larr; Run another Listing Report</a>
+    {% endif %}
+    <a class="btn secondary" href="{{ url_for('dashboard') }}">Back to home</a>
+  </div>
 </div>
 {% endblock %}

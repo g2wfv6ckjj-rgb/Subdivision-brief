@@ -3,48 +3,68 @@
 {% block content %}
 <div class="card">
   <h1>Subdivision Brief</h1>
+  {% if revise %}
+  <p class="sub">Revising the {{ revise.subdivision }} brief. Change any option below and generate again —
+  no need to re-upload the same MLS export.</p>
+  {% else %}
   <p class="sub">Upload a 365-day MLS subdivision activity export. Takes about a minute to build.</p>
+  {% endif %}
   <form method="post" action="{{ url_for('generate') }}" enctype="multipart/form-data"
         data-working="We're building your Subdivision Brief"
         data-est="usually about a minute"
         data-steps="Reading your MLS export|Cleaning and de-duplicating listings|Scoring the market dials|Adding area context|Laying out the brief pages|Rendering the PDF|Finishing any extras you selected">
+    {% if revise %}
+    <input type="hidden" name="reuse_report_id" value="{{ revise.id }}">
+    <label for="csv_file">MLS export (.csv)</label>
+    <div class="sub" style="margin:0 0 8px">Reusing the export uploaded {{ revise.uploaded_at.strftime('%b %-d, %Y') }}.
+      Only choose a file here if you want to use different data instead.</div>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv">
+    {% else %}
     <label for="csv_file">MLS export (.csv)</label>
     <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+    {% endif %}
 
     <label for="subdivision">Subdivision name</label>
-    <input type="text" id="subdivision" name="subdivision" placeholder="Hilltop" required>
+    <input type="text" id="subdivision" name="subdivision" placeholder="Hilltop" required
+           value="{{ revise.subdivision if revise else '' }}">
 
     <label for="city">City, State</label>
-    <input type="text" id="city" name="city" placeholder="Denver, CO" required>
+    <input type="text" id="city" name="city" placeholder="Denver, CO" required
+           value="{{ revise.city if revise else '' }}">
 
     <label>Brief format</label>
     <div class="checkline">
-      <input type="radio" id="tier_full" name="brief_tier" value="full" checked>
+      <input type="radio" id="tier_full" name="brief_tier" value="full"
+             {{ 'checked' if not revise or revise.options.get('brief_tier', 'full') == 'full' else '' }}>
       <label for="tier_full" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
         Full Market Brief (seller + buyer, complete report + companion appendix)
       </label>
     </div>
     <div class="checkline">
-      <input type="radio" id="tier_one" name="brief_tier" value="one_page">
+      <input type="radio" id="tier_one" name="brief_tier" value="one_page"
+             {{ 'checked' if revise and revise.options.get('brief_tier') == 'one_page' else '' }}>
       <label for="tier_one" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
         1-Page High-Level Brief (seller + buyer, the headline numbers only)
       </label>
     </div>
 
     <div class="checkline">
-      <input type="checkbox" id="carousel" name="carousel" checked>
+      <input type="checkbox" id="carousel" name="carousel"
+             {{ 'checked' if not revise or revise.options.get('carousel', True) else '' }}>
       <label for="carousel" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
         Also generate the social carousel (6 slides)
       </label>
     </div>
     <div class="checkline">
-      <input type="checkbox" id="postcard" name="postcard">
+      <input type="checkbox" id="postcard" name="postcard"
+             {{ 'checked' if revise and revise.options.get('postcard') else '' }}>
       <label for="postcard" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
         Also generate the print postcard (all 3 front designs)
       </label>
     </div>
     <div class="checkline">
-      <input type="checkbox" id="newsletter" name="newsletter">
+      <input type="checkbox" id="newsletter" name="newsletter"
+             {{ 'checked' if revise and revise.options.get('newsletter') else '' }}>
       <label for="newsletter" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
         Also generate an email newsletter draft (.html)
       </label>

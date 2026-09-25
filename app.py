@@ -15,6 +15,7 @@ reason for choosing this over one shared site-wide password.
 """
 import os
 import secrets
+import json
 import shutil
 import sys
 import tempfile
@@ -191,7 +192,23 @@ def register_routes(app):
     @app.route('/subdivision')
     @login_required
     def subdivision_form():
-        return render_template('subdivision.html')
+        revise = None
+        revise_id = request.args.get('revise', type=int)
+        if revise_id:
+            prior = Report.query.get(revise_id)
+            src = REPORTS_DIR / str(revise_id) / 'source.csv'
+            if prior and prior.agent_id == current_user.id and src.exists():
+                opts = {}
+                opt_path = REPORTS_DIR / str(revise_id) / 'options.json'
+                if opt_path.exists():
+                    try:
+                        opts = json.loads(opt_path.read_text())
+                    except (json.JSONDecodeError, OSError):
+                        opts = {}
+                revise = {'id': revise_id, 'subdivision': prior.subdivision,
+                         'city': prior.city, 'uploaded_at': prior.created_at,
+                         'options': opts}
+        return render_template('subdivision.html', revise=revise)
 
     @app.route('/generate', methods=['POST'])
     @login_required
@@ -206,10 +223,23 @@ def register_routes(app):
         want_postcard = request.form.get('postcard') == 'on'
         want_newsletter = request.form.get('newsletter') == 'on'
 
-        if not f or not f.filename:
+        # Revise flow: reuse a prior upload's CSV instead of requiring a new
+        # one, so an agent changing only the tier or add-on checkboxes never
+        # has to re-find and re-upload the same MLS export. reuse_report_id
+        # is only trusted after confirming it belongs to this agent and the
+        # file is actually still on disk -- never trust the id alone.
+        reuse_id = request.form.get('reuse_report_id', type=int)
+        reused_csv_path = None
+        if not (f and f.filename) and reuse_id:
+            prior = Report.query.get(reuse_id)
+            candidate = REPORTS_DIR / str(reuse_id) / 'source.csv'
+            if prior and prior.agent_id == current_user.id and candidate.exists():
+                reused_csv_path = candidate
+
+        if not (f and f.filename) and not reused_csv_path:
             flash('Choose an MLS export CSV first.', 'error')
             return redirect(url_for('subdivision_form'))
-        if Path(f.filename).suffix.lower() not in ALLOWED_EXT:
+        if f and f.filename and Path(f.filename).suffix.lower() not in ALLOWED_EXT:
             flash('That file needs to be a .csv MLS export.', 'error')
             return redirect(url_for('subdivision_form'))
         if not sub or not city:
@@ -228,8 +258,12 @@ def register_routes(app):
         agent_brand = current_user.brand_dict(str(AGENT_ASSETS_DIR))
 
         with tempfile.TemporaryDirectory(prefix='upload-') as tmp:
-            csv_path = Path(tmp) / f.filename
-            f.save(csv_path)
+            if reused_csv_path:
+                csv_path = Path(tmp) / reused_csv_path.name
+                shutil.copyfile(reused_csv_path, csv_path)
+            else:
+                csv_path = Path(tmp) / f.filename
+                f.save(csv_path)
 
             try:
                 import co_data
@@ -258,6 +292,12 @@ def register_routes(app):
                     nl_path = outdir / f'{sub.replace(" ", "_")}_Newsletter.html'
                     nl_path.write_text(nl_html, encoding='utf-8')
                     paths.append(str(nl_path))
+
+                # Copy the CSV into this report's own permanent directory
+                # BEFORE the temp directory (and csv_path inside it) goes
+                # away when this `with` block exits -- this is what lets a
+                # later "Revise" reuse the same data without a re-upload.
+                shutil.copyfile(csv_path, outdir / 'source.csv')
             except core.BriefError as exc:
                 # Deliberate stops (stale mortgage rate, unrecognized county,
                 # etc.) -- these are the pipeline correctly refusing, not a
@@ -282,6 +322,9 @@ def register_routes(app):
 
         report.files = '\n'.join(Path(p).name for p in paths)
         db.session.commit()
+        (outdir / 'options.json').write_text(json.dumps({
+            'brief_tier': tier, 'carousel': want_carousel,
+            'postcard': want_postcard, 'newsletter': want_newsletter}))
         return redirect(url_for('report_detail', report_id=report.id))
 
     @app.route('/listing')
@@ -342,7 +385,10 @@ def register_routes(app):
         if report.agent_id != current_user.id and not current_user.is_admin:
             abort(403)
         files = [f for f in report.files.split('\n') if f]
-        return render_template('report_detail.html', report=report, files=files)
+        can_revise = (REPORTS_DIR / str(report_id) / 'source.csv').exists()
+        is_listing = any('Listing_Report' in f for f in files)
+        return render_template('report_detail.html', report=report, files=files,
+                               can_revise=can_revise, is_listing=is_listing)
 
     @app.route('/download/<int:report_id>/<path:filename>')
     @login_required

@@ -71,11 +71,31 @@ def cover(prop):
 <div class="rng">SOURCED FROM REALTYAPI (UNOFFICIAL) &#183; NOT AN MLS EXPORT</div>{R.skyline()}</div>'''
 
 
-def _property_section(prop, nn):
+def _photo_style(photo_size):
+    """Never stretch a photo past what its own resolution actually
+    supports -- a small source rendered at full page width is exactly what
+    produces visible blur (an upscaling artifact, not a bug in the source
+    photo or in RealtyAPI). photo_size is (width, height) in real pixels
+    from listing_api.photo_dimensions(), or None when it couldn't be read
+    (network hiccup, unusual format) -- the previous full-width behavior is
+    the safe fallback there, since we have no evidence it's too small.
+    """
+    if not photo_size or not photo_size[0]:
+        return 'width:100%;max-height:280pt'
+    w = photo_size[0]
+    if w >= 1200:
+        return 'width:100%;max-height:280pt'
+    if w >= 700:
+        return 'width:85%;max-height:240pt'
+    return 'width:55%;max-height:160pt'
+
+
+def _property_section(prop, nn, photo_size=None):
     photo = ''
     if prop.get('photo_url'):
+        style = _photo_style(photo_size)
         photo = (f'<img src="{HT.escape(prop["photo_url"])}" alt="" '
-                f'style="width:100%;max-height:280pt;object-fit:cover;'
+                f'style="{style};object-fit:cover;'
                 f'border-radius:6pt;margin-bottom:10pt">')
 
     facts = []
@@ -406,7 +426,7 @@ def _methodology(prop, comps, has_area, has_demo=False):
     return f'<p class="note">{" ".join(parts)}</p>'
 
 
-def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=None, target_areas=None, agent=None):
+def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=None, target_areas=None, agent=None, photo_size=None):
     """prop: from listing_api.get_property(). comps: from
     listing_api.get_comps(), optional. area: from co_data.resolve([zip]) or
     co_data.from_export(), optional -- Rent to Price / Growth Outlook for
@@ -417,7 +437,7 @@ def build_html(prop, comps=None, area=None, demo=None, origins=None, careers=Non
     nn = _N()
 
     body = (cover(prop)
-           + _property_section(prop, nn)
+           + _property_section(prop, nn, photo_size=photo_size)
            + _valuation_section(prop, nn)
            + _comps_section(comps, nn)
            + _neighborhood_section(prop, area, nn)
@@ -447,6 +467,7 @@ def build(address, outdir='/mnt/user-data/outputs', agent=None):
     import tempfile
 
     prop = listing_api.get_property(address)
+    photo_size = listing_api.photo_dimensions(prop.get('photo_url'))
 
     comps = []
     if prop.get('zip'):
@@ -478,7 +499,7 @@ def build(address, outdir='/mnt/user-data/outputs', agent=None):
             careers = None  # the Career types row is simply omitted
 
     html = build_html(prop, comps=comps, area=area, demo=demo, origins=origins, careers=careers,
-                      target_areas=target_areas, agent=agent)
+                      target_areas=target_areas, agent=agent, photo_size=photo_size)
 
     os.makedirs(outdir, exist_ok=True)
     slug = (prop.get('address_line') or 'Listing').replace(' ', '_').replace(',', '')

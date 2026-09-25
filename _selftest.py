@@ -331,4 +331,93 @@ for _w in ('family buyer', 'families', 'retiree', 'young buyer', ' kids ', ' sin
     assert _w not in _plain, f'FH violation in full report: {_w}'
 print('24. Full report assembly with Target Areas + new creatives + Fair Housing section: OK')
 
+# 25. Photo dimension-aware sizing -- a small source photo must not be
+# stretched to full width (the cause of the blurry cover-photo report).
+# Tested against a REAL local HTTP server serving real JPEGs, not a mock.
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from PIL import Image
+import io as _io
+_imgs = {}
+for _n, _sz in [('s', (320, 213)), ('l', (1600, 1067))]:
+    _b = _io.BytesIO(); Image.new('RGB', _sz, (100, 120, 140)).save(_b, format='JPEG'); _imgs[_n] = _b.getvalue()
+class _H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        d = _imgs.get(self.path.strip('/'))
+        if d is None: self.send_response(404); self.end_headers(); return
+        self.send_response(200); self.send_header('Content-Type', 'image/jpeg')
+        self.send_header('Content-Length', str(len(d))); self.end_headers(); self.wfile.write(d)
+    def log_message(self, *a): pass
+_srv = HTTPServer(('127.0.0.1', 8932), _H)
+threading.Thread(target=_srv.serve_forever, daemon=True).start()
+assert listing_api.photo_dimensions('http://127.0.0.1:8932/s') == (320, 213)
+assert listing_api.photo_dimensions('http://127.0.0.1:8932/l') == (1600, 1067)
+assert listing_api.photo_dimensions('http://127.0.0.1:8932/missing') is None
+assert listing_api.photo_dimensions(None) is None
+_srv.shutdown()
+assert listing_report._photo_style((320, 213)) == 'width:55%;max-height:160pt'
+assert listing_report._photo_style((1600, 1067)) == 'width:100%;max-height:280pt'
+assert listing_report._photo_style(None) == 'width:100%;max-height:280pt'
+print('25. Photo dimension-aware sizing (real HTTP server, real JPEGs): OK')
+
+# 26. Revise & regenerate: an uploaded CSV persists in the report's own
+# directory, the revise form pre-fills prior choices, resubmitting with NO
+# file at all still succeeds using the saved CSV, and another agent cannot
+# reuse a report_id that isn't theirs. master.build() is patched to a
+# trivial stand-in -- this tests the route's own logic (file handling,
+# persistence, ownership check), not the PDF pipeline itself, which is
+# already covered by the subdivision-brief skill's own tests and blocked
+# here by the same missing Chromium binary as every PDF this session.
+import io as _io2
+import master
+_orig_master_build = master.build
+def _fake_build(csv, sub, city, outdir='.', enrich_opts=None, **kw):
+    _p = __import__('pathlib').Path(outdir) / f'{sub}_Master_Brief.pdf'
+    _p.write_bytes(b'%PDF-fake')
+    return [str(_p)], {'n_cl': 1}, {'chance': 50, 'power': 50, 'balance': 50}
+master.build = _fake_build
+
+with open('/mnt/user-data/uploads/Hilltop_last_365_days.csv', 'rb') as _fh:
+    _csv_bytes = _fh.read()
+_r = client.post('/generate', data={
+    'csv_file': (_io2.BytesIO(_csv_bytes), 'Hilltop_last_365_days.csv'),
+    'subdivision': 'Hilltop', 'city': 'Denver, CO', 'brief_tier': 'full', 'carousel': 'on',
+}, content_type='multipart/form-data')
+assert _r.status_code == 302 and '/reports/' in _r.headers['Location']
+_rid = int(_r.headers['Location'].rstrip('/').rsplit('/', 1)[-1])
+assert (appmod.REPORTS_DIR / str(_rid) / 'source.csv').stat().st_size == len(_csv_bytes)
+_opts = json.loads((appmod.REPORTS_DIR / str(_rid) / 'options.json').read_text())
+assert _opts == {'brief_tier': 'full', 'carousel': True, 'postcard': False, 'newsletter': False}
+
+_r = client.get(f'/reports/{_rid}')
+assert b'Revise options' in _r.data
+
+_r = client.get(f'/subdivision?revise={_rid}')
+_html = _r.data.decode()
+assert 'value="Hilltop"' in _html and 'Reusing the export uploaded' in _html
+
+_r = client.post('/generate', data={
+    'reuse_report_id': str(_rid), 'subdivision': 'Hilltop', 'city': 'Denver, CO', 'brief_tier': 'one_page',
+}, content_type='multipart/form-data')  # deliberately no csv_file at all
+assert _r.status_code == 302 and '/reports/' in _r.headers['Location']
+_new_id = int(_r.headers['Location'].rstrip('/').rsplit('/', 1)[-1])
+assert _new_id != _rid
+assert (appmod.REPORTS_DIR / str(_new_id) / 'source.csv').stat().st_size == len(_csv_bytes)
+assert json.loads((appmod.REPORTS_DIR / str(_new_id) / 'options.json').read_text())['brief_tier'] == 'one_page'
+
+with appmod.app.app_context():
+    _a2 = Agent(email='revise-agent2@example.com', name='Agent Two', active=True)
+    _a2.set_password('pw2')
+    db.session.add(_a2); db.session.commit()
+_c2 = appmod.app.test_client()
+_c2.post('/login', data={'email': 'revise-agent2@example.com', 'password': 'pw2'})
+_r = _c2.post('/generate', data={
+    'reuse_report_id': str(_rid), 'subdivision': 'Hilltop', 'city': 'Denver, CO', 'brief_tier': 'full',
+}, content_type='multipart/form-data')
+assert _r.status_code == 302 and _r.headers['Location'].endswith('/subdivision'), \
+    "a different agent must not be able to reuse another agent's report_id"
+
+master.build = _orig_master_build
+print('26. Revise & regenerate flow (persistence, pre-fill, no re-upload, ownership check): OK')
+
 print('\nALL CHECKS PASSED')

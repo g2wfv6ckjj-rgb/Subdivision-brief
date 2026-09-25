@@ -12,10 +12,42 @@ argument from request-handling code (so it can't end up in a traceback).
 """
 import os
 
+import io
+
 import requests
 
 BASE = 'https://realtor.realtyapi.io'
 TIMEOUT = 20
+
+
+def photo_dimensions(url, timeout=8):
+    """Real pixel width/height of a photo URL, or None on any failure --
+    this is a display-quality nicety, never worth failing a report over.
+    Reads only as many bytes as PIL needs to parse the header, not the
+    whole file, so this stays cheap even for a multi-MB source photo.
+    """
+    if not url:
+        return None
+    try:
+        r = requests.get(url, timeout=timeout, stream=True)
+        if not r.ok:
+            return None
+        chunk = io.BytesIO()
+        for part in r.iter_content(2048):
+            chunk.write(part)
+            chunk.seek(0)
+            try:
+                from PIL import Image
+                with Image.open(chunk) as im:
+                    return im.size  # (width, height) in pixels
+            except Exception:
+                chunk.seek(0, io.SEEK_END)
+                if chunk.tell() > 262144:  # 256KB -- header should be long since found by now
+                    return None
+                continue
+    except requests.RequestException:
+        return None
+    return None
 
 
 class ListingAPIError(Exception):
