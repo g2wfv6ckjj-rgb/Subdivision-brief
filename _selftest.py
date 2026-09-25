@@ -1,4 +1,5 @@
 """Not part of the deployed app -- a one-off local check before shipping."""
+import io
 import os
 import shutil
 from pathlib import Path
@@ -99,5 +100,76 @@ r = client.post('/login', data={'email': 'agent1@example.com', 'password': 'agen
 assert r.status_code == 200 and b'Incorrect email or password' in r.data, \
     'disabled agent was able to log in'
 print('8. disabled agent blocked from logging in: OK')
+
+# 9. profile: blank state, then save text-only info, then upload + replace a headshot
+client.post('/login', data={'email': 'xiaohui@fntcolorado.com', 'password': 'admin-test-pw'})
+with appmod.app.app_context():
+    admin = Agent.query.filter_by(email='xiaohui@fntcolorado.com').first()
+    assert admin.brand_dict(str(appmod.AGENT_ASSETS_DIR)) is None, \
+        'brand_dict should be None before anything is set'
+r = client.get('/profile')
+assert r.status_code == 200 and b'Headshot' in r.data
+r = client.post('/profile', data={'phone': '(303) 555-0123', 'contact_email': 'x@fntcolorado.com'})
+assert r.status_code == 302
+with appmod.app.app_context():
+    admin = Agent.query.filter_by(email='xiaohui@fntcolorado.com').first()
+    bd = admin.brand_dict(str(appmod.AGENT_ASSETS_DIR))
+    assert bd and bd['phone'] == '(303) 555-0123' and bd.get('headshot_path') is None
+print('9. profile blank state + text-only save + brand_dict: OK')
+
+r = client.post('/profile', data={
+    'phone': '(303) 555-0123', 'contact_email': 'x@fntcolorado.com',
+    'headshot': (io.BytesIO(b'fake-jpeg'), 'me.jpg'),
+}, content_type='multipart/form-data')
+with appmod.app.app_context():
+    admin = Agent.query.filter_by(email='xiaohui@fntcolorado.com').first()
+    assert admin.headshot_filename == 'headshot.jpg'
+    bd = admin.brand_dict(str(appmod.AGENT_ASSETS_DIR))
+    assert bd.get('headshot_path') and os.path.exists(bd['headshot_path'])
+r = client.post('/profile', data={
+    'phone': '(303) 555-0123', 'contact_email': 'x@fntcolorado.com',
+    'headshot': (io.BytesIO(b'fake-png'), 'me2.png'),
+}, content_type='multipart/form-data')
+files = sorted(p.name for p in (appmod.AGENT_ASSETS_DIR / str(admin.id)).glob('headshot.*'))
+assert files == ['headshot.png'], f'old headshot file orphaned: {files}'
+print('10. headshot upload + re-upload replaces (no orphaned file): OK')
+
+# 11. carousel/postcard CTA rendering, all three agent-personalization states
+import carousel, postcard
+none_html = carousel._s6_cta({}, 'Hilltop', 'Denver, CO', agent=None)
+assert 'class="broker"' in none_html and 'agentname' not in none_html
+full = {'name': 'X', 'phone': '303-555-0123', 'email': 'x@y.com', 'headshot_path': '/fake.jpg'}
+full_html = carousel._s6_cta({}, 'Hilltop', 'Denver, CO', agent=full)
+assert 'agentphoto' in full_html and 'Fidelity National Title' in full_html
+partial = {'name': 'Y', 'phone': None, 'email': 'y@z.com', 'headshot_path': None}
+partial_html = carousel._s6_cta({}, 'Hilltop', 'Denver, CO', agent=partial)
+assert '<img class="agentphoto"' not in partial_html and 'Y' in partial_html
+pc_none = postcard.side_b_html({'moi':2,'dtc_med':21,'cpo':92,'med':1,'n_cl':1}, 'H',
+                               scores={'chance':1,'power':1,'balance':1}, agent=None)
+assert 'class="agentrow"' not in pc_none
+pc_full = postcard.side_b_html({'moi':2,'dtc_med':21,'cpo':92,'med':1,'n_cl':1}, 'H',
+                               scores={'chance':1,'power':1,'balance':1}, agent=full)
+assert 'class="agentrow"' in pc_full and 'Fidelity National Title' in pc_full
+print('11. carousel + postcard agent personalization (none/full/partial): OK')
+
+# 12. one-pager tier: distinct content, doesn't bleed into the full Brief
+import core
+import master as _m
+_d = core.load('/mnt/user-data/uploads/Hilltop_last_365_days.csv')
+_m1, _cl, _act, _exp = core.metrics(_d)
+_cfg = core.set_county(_d)
+one_pager, brief_h, appendix_h = _m.report_html(_d, _m1, _cl, _act, _exp, 'Hilltop', 'Denver, CO', _cfg)
+assert 'HIGH-LEVEL BRIEF' in one_pager and 'MASTER BRIEF' not in one_pager
+assert 'Chance of selling, if priced right' not in one_pager, 'one-pager bled into section 02'
+assert 'MASTER BRIEF' in brief_h and 'Chance of selling, if priced right' in brief_h
+print('12. one-pager tier is genuinely distinct from the full Brief: OK')
+
+# 13. newsletter HTML: standalone, no Playwright needed, real content
+import monthly, marketing
+_mo = monthly.build(_d)
+_nl = marketing.newsletter_html(_m1, 'Hilltop', 'Denver, CO', _mo)
+assert _nl.strip().startswith('<!DOCTYPE html>') and 'Subject:' in _nl
+assert 'Equal Housing Opportunity' in _nl
+print('13. newsletter HTML generation: OK')
 
 print('\nALL CHECKS PASSED')

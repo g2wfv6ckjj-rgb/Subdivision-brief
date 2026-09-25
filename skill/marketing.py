@@ -328,6 +328,67 @@ def newsletter(m, sub, city, standouts, month_ok):
 
 
 # ---------------------------------------------------------------- render
+# -------------------------------------------------------- standalone HTML
+def newsletter_html(m, sub, city, mo_build):
+    """A self-contained .html file of just the newsletter draft -- the same
+    content and copy already embedded in the Appendix PDF's 'Digital
+    Marketing Strategies' section, but as its own downloadable file an agent
+    can open directly in a browser or paste straight into an email tool,
+    rather than extracting it from page 6 of a PDF. Inline styles throughout
+    (not a <style> block) because many email clients strip <style> tags on
+    paste -- this needs to survive that. No Playwright involved: this is
+    plain HTML, not a PDF or PNG, so it's the cheapest of every download
+    option here to generate.
+    """
+    month_ok, _last_n = _month_ok(mo_build, m)
+    standouts = monthly_standouts(mo_build, top=3)
+    nl = newsletter(m, sub, city, standouts, month_ok)
+    place = _place(city)
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{HT.escape(nl["subject"])}</title></head>
+<body style="margin:0;padding:0;background:#FBF6EE;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF6EE;padding:32px 12px;">
+<tr><td align="center">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFDF8;border:1px solid #E9DFCF;border-radius:8px;overflow:hidden;">
+<tr><td style="background:#1B2740;padding:24px 32px;">
+  <div style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;opacity:.75;">Email newsletter draft</div>
+  <div style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:21px;font-weight:700;margin-top:6px;">{HT.escape(sub)}, {HT.escape(place)}</div>
+</td></tr>
+<tr><td style="padding:26px 32px 8px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F0E9DA;border:1px solid #E3D3AE;border-radius:6px;">
+  <tr><td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#7A7061;">
+    <strong style="color:#1B2740;">Subject:</strong> {HT.escape(nl["subject"])}<br>
+    <strong style="color:#1B2740;">Alternate subject:</strong> {HT.escape(nl["alt_subject"])}<br>
+    <strong style="color:#1B2740;">Preheader:</strong> {HT.escape(nl["preheader"])}
+  </td></tr>
+  </table>
+</td></tr>
+<tr><td style="padding:20px 32px;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.65;color:#1B2740;">
+  <p style="margin:0 0 18px;">{nl["opener"]} {nl["frame"]}</p>
+  <p style="margin:0 0 18px;">{nl["seller"]}</p>
+  <p style="margin:0 0 18px;">{nl["buyer"]}</p>
+</td></tr>
+<tr><td style="padding:4px 32px 28px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+  <tr><td align="center" style="background:#1B2740;border-radius:6px;padding:16px 20px;">
+    <span style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;">{HT.escape(nl["cta"])}</span>
+  </td></tr>
+  </table>
+</td></tr>
+<tr><td style="padding:18px 32px;border-top:1px solid #E9DFCF;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.6;color:#7A7061;">
+  Figures drawn from a 365-day MLS export of {HT.escape(sub)}, {HT.escape(place)}. Re-run this report
+  before reusing this draft in a later month &mdash; the figures above go stale. Add your brokerage
+  name, license number and the Equal Housing Opportunity mark before sending, per Colorado Real Estate
+  Commission advertising rules. Information deemed reliable but not guaranteed.
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>'''
+
+
 def _post_html(p):
     return (f'<div class="mkt"><div class="mkl">{p["label"]}</div>'
             f'<p class="mkh">{p["hook"]}</p>'

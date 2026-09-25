@@ -34,10 +34,13 @@ sys.path.insert(0, str(BASE_DIR / 'skill'))  # so `import master` etc. resolve
 
 INSTANCE_DIR = BASE_DIR / 'instance'
 REPORTS_DIR = INSTANCE_DIR / 'reports'
+AGENT_ASSETS_DIR = INSTANCE_DIR / 'agent_assets'
 INSTANCE_DIR.mkdir(exist_ok=True)
 REPORTS_DIR.mkdir(exist_ok=True)
+AGENT_ASSETS_DIR.mkdir(exist_ok=True)
 
 ALLOWED_EXT = {'.csv'}
+ALLOWED_IMAGE_EXT = {'.jpg', '.jpeg', '.png'}
 MAX_UPLOAD_MB = 25
 RETENTION_DAYS = int(os.environ.get('RETENTION_DAYS', 30))
 
@@ -153,8 +156,12 @@ def register_routes(app):
         f = request.files.get('csv_file')
         sub = request.form.get('subdivision', '').strip()
         city = request.form.get('city', '').strip()
+        tier = request.form.get('brief_tier', 'full')
+        if tier not in ('one_page', 'full'):
+            tier = 'full'
         want_carousel = request.form.get('carousel') == 'on'
         want_postcard = request.form.get('postcard') == 'on'
+        want_newsletter = request.form.get('newsletter') == 'on'
 
         if not f or not f.filename:
             flash('Choose an MLS export CSV first.', 'error')
@@ -172,6 +179,11 @@ def register_routes(app):
         outdir = REPORTS_DIR / str(report.id)
         outdir.mkdir(parents=True, exist_ok=True)
 
+        # None when the agent hasn't set up a profile yet -- carousel.py and
+        # postcard.py both fall back to the generic FNT branding in that
+        # case, same as before this feature existed. See models.Agent.brand_dict.
+        agent_brand = current_user.brand_dict(str(AGENT_ASSETS_DIR))
+
         with tempfile.TemporaryDirectory(prefix='upload-') as tmp:
             csv_path = Path(tmp) / f.filename
             f.save(csv_path)
@@ -181,14 +193,28 @@ def register_routes(app):
                 import core
                 import master
                 paths, m, scores = master.build(
-                    str(csv_path), sub, city, outdir=str(outdir), carousel=want_carousel)
+                    str(csv_path), sub, city, outdir=str(outdir),
+                    carousel=want_carousel, tier=tier, agent=agent_brand)
 
+                if want_postcard or want_carousel or want_newsletter:
+                    d = core.load(str(csv_path))
+                if want_postcard or want_carousel:
+                    area = co_data.from_export(d).as_dict()
                 if want_postcard:
                     import postcard
-                    d = core.load(str(csv_path))
-                    area = co_data.from_export(d).as_dict()
                     paths += postcard.render(m, sub, city, str(outdir),
-                                             scores=scores, area=area, place=city)
+                                             scores=scores, area=area, place=city,
+                                             agent=agent_brand)
+                if want_newsletter:
+                    # No Playwright involved -- plain HTML, not a PDF/PNG, so
+                    # this is the cheapest of every option here.
+                    import marketing
+                    import monthly
+                    mo = monthly.build(d)
+                    nl_html = marketing.newsletter_html(m, sub, city, mo)
+                    nl_path = outdir / f'{sub.replace(" ", "_")}_Newsletter.html'
+                    nl_path.write_text(nl_html, encoding='utf-8')
+                    paths.append(str(nl_path))
             except core.BriefError as exc:
                 # Deliberate stops (stale mortgage rate, unrecognized county,
                 # etc.) -- these are the pipeline correctly refusing, not a
@@ -233,6 +259,57 @@ def register_routes(app):
         return send_from_directory(REPORTS_DIR / str(report_id), filename, as_attachment=True)
 
     # --------------------------------------------------------------- admin
+
+    @app.route('/profile', methods=['GET', 'POST'])
+    @login_required
+    def profile():
+        agent_dir = AGENT_ASSETS_DIR / str(current_user.id)
+        if request.method == 'POST':
+            phone = request.form.get('phone', '').strip()
+            contact_email = request.form.get('contact_email', '').strip()
+            current_user.contact_phone = phone or None
+            current_user.contact_email = contact_email or None
+
+            for field, attr in (('headshot', 'headshot_filename'), ('logo', 'logo_filename')):
+                f = request.files.get(field)
+                if f and f.filename:
+                    ext = Path(f.filename).suffix.lower()
+                    if ext not in ALLOWED_IMAGE_EXT:
+                        flash(f'{field.title()} needs to be a .jpg or .png image.', 'error')
+                        return redirect(url_for('profile'))
+                    agent_dir.mkdir(parents=True, exist_ok=True)
+                    # Delete any existing file for this field first, whatever
+                    # its extension -- otherwise re-uploading a .png over an
+                    # existing .jpg leaves the old file orphaned on disk
+                    # (harmless, but pointless clutter on a disk with a real
+                    # size limit).
+                    for old in agent_dir.glob(f'{field}.*'):
+                        old.unlink()
+                    dest = agent_dir / f'{field}{ext}'
+                    f.save(dest)
+                    setattr(current_user, attr, dest.name)
+
+            db.session.commit()
+            flash('Your info is saved.', 'success')
+            return redirect(url_for('profile'))
+
+        photo_url = None
+        if current_user.headshot_filename:
+            photo_url = url_for('agent_asset', filename=current_user.headshot_filename)
+        logo_url = None
+        if current_user.logo_filename:
+            logo_url = url_for('agent_asset', filename=current_user.logo_filename)
+        return render_template('profile.html', photo_url=photo_url, logo_url=logo_url)
+
+    @app.route('/profile/asset/<path:filename>')
+    @login_required
+    def agent_asset(filename):
+        # Only ever serves the CURRENT user's own uploaded images -- this is
+        # a preview route for their own /profile page, not a public image
+        # host. Compare against models.Agent.brand_dict(), which resolves
+        # the same instance/agent_assets/<id>/ path when building what
+        # actually goes into a generated carousel/postcard.
+        return send_from_directory(AGENT_ASSETS_DIR / str(current_user.id), filename)
 
     @app.route('/admin')
     @admin_required

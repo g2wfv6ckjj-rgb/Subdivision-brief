@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}My Info{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>My Info</h1>
+  <p class="sub">Saved to your account — set this once and it's used automatically on every carousel and postcard you generate from here on. Leave anything blank to keep the generic Fidelity National Title branding for that piece.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    <label>Headshot</label>
+    {% if photo_url %}
+      <div style="margin:6px 0 10px">
+        <img src="{{ photo_url }}" alt="Current headshot"
+             style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:1px solid var(--line)">
+      </div>
+    {% endif %}
+    <input type="file" name="headshot" accept=".jpg,.jpeg,.png">
+
+    <label>Logo <span style="text-transform:none;font-weight:400">(optional)</span></label>
+    {% if logo_url %}
+      <div style="margin:6px 0 10px">
+        <img src="{{ logo_url }}" alt="Current logo" style="max-height:60px;max-width:220px">
+      </div>
+    {% endif %}
+    <input type="file" name="logo" accept=".jpg,.jpeg,.png">
+
+    <label for="phone">Phone</label>
+    <input type="text" id="phone" name="phone" value="{{ current_user.contact_phone or '' }}" placeholder="(303) 555-0123">
+
+    <label for="contact_email">Public contact email</label>
+    <input type="text" id="contact_email" name="contact_email" value="{{ current_user.contact_email or '' }}"
+           placeholder="{{ current_user.email }}">
+    <div style="font-size:12px;color:var(--soft);margin-top:5px">Leave blank to use your login email ({{ current_user.email }}) — some agents prefer a different address on public-facing marketing.</div>
+
+    <button class="btn" type="submit">Save</button>
+  </form>
+</div>
+{% endblock %}

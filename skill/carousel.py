@@ -300,7 +300,27 @@ is the best single signal of which listing has room.</div>
 </div>''')
 
 
-def _s6_cta(m, sub, place):
+def _s6_cta(m, sub, place, agent=None):
+    """agent: optional dict (name, phone, email, headshot_path, logo_path).
+    None -- or an agent who hasn't set any of it up yet -- keeps the
+    original generic FNT-only sign-off exactly as it was. Every other case
+    (photo but no logo, contact info but no photo, etc.) degrades gracefully
+    rather than assuming all fields are present -- see rule 72."""
+    if agent:
+        photo = ''
+        if agent.get('headshot_path'):
+            photo = (f'<img class="agentphoto" src="file://{agent["headshot_path"]}" '
+                     f'alt="{HT.escape(agent.get("name") or "")}">')
+        contact_bits = [x for x in (agent.get('phone'), agent.get('email')) if x]
+        sign_html = (
+            (photo or '')
+            + (f'<div class="agentname">{HT.escape(agent.get("name") or "")}</div>' if agent.get('name') else '')
+            + (f'<div class="agentcontact">{HT.escape(" &#183; ".join(contact_bits))}</div>' if contact_bits else '')
+            + f'<div class="agentfnt">{BR.NAME}</div>'
+        )
+    else:
+        sign_html = f'{BR.logo_img(96)}<div class="broker">{"<br>".join(BR.signoff_lines())}</div>'
+
     return _slide(
         f'''<div class="pad ctr">
 {_eyebrow('Want the full picture?', '#C9A46B')}
@@ -308,8 +328,7 @@ def _s6_cta(m, sub, place):
 <div class="ctasub">Send me a message and I will send the full brief &mdash; what each home
 listed for, what it closed for, and how long it took.</div>
 <div class="ctaline"></div>
-{BR.logo_img(96)}
-<div class="broker">{'<br>'.join(BR.signoff_lines())}</div>
+{sign_html}
 <div class="eho">{BR.EHO} &nbsp;&#183;&nbsp; Figures from a 365-day MLS export
 of {HT.escape(sub)}, {HT.escape(place)}. Information deemed reliable but not guaranteed.</div>
 </div>''', bg=PAPER, cls='light-cov')
@@ -409,10 +428,16 @@ h2.cta{{font-size:62px;color:{INK};margin:26px 0 30px;}}
   color:{PINE};margin-top:22px;}}
 .eho{{font-family:{FONT_M};font-size:17px;line-height:1.65;color:{SOFT};margin-top:26px;
   max-width:800px;}}
+.agentphoto{{width:132px;height:132px;border-radius:50%;object-fit:cover;
+  border:4px solid {PAPER};box-shadow:0 3px 14px rgba(16,32,58,.18);margin-bottom:18px;}}
+.agentname{{font-family:{FONT_H};font-size:36px;font-weight:700;color:{INK};letter-spacing:-.01em;}}
+.agentcontact{{font-family:{FONT_M};font-size:22px;color:{PINE};margin-top:8px;letter-spacing:.02em;}}
+.agentfnt{{font-family:{FONT_M};font-size:16px;letter-spacing:.14em;text-transform:uppercase;
+  color:{SOFT};margin-top:20px;}}
 '''
 
 
-def slides(m, sub, city, scores=None, area=None):
+def slides(m, sub, city, scores=None, area=None, agent=None):
     """The slide fragments, in order.
 
     `scores` is master.scores() output; `area` carries the ZIP/county reference
@@ -427,13 +452,13 @@ def slides(m, sub, city, scores=None, area=None):
         _s3_seller(m, sub),
         _s4_timing(m, sub),
         _s5_buyer(m, sub),
-        _s6_cta(m, sub, place),
+        _s6_cta(m, sub, place, agent),
     ]
 
 
-def document(m, sub, city, gap=True, scores=None, area=None):
+def document(m, sub, city, gap=True, scores=None, area=None, agent=None):
     """Full HTML holding every slide, for rendering or preview."""
-    sl = slides(m, sub, city, scores, area)
+    sl = slides(m, sub, city, scores, area, agent)
     sep = 'margin:0 auto 26px;' if gap else 'margin:0 auto;'
     body = ''.join(s.replace('style="background:', f'style="{sep}background:') for s in sl)
     page = '' if gap else ('body{background:#fff;} .sl{margin:0;} '
@@ -443,12 +468,18 @@ def document(m, sub, city, gap=True, scores=None, area=None):
             f'<body>{body}</body></html>')
 
 
-def render(m, sub, city, outdir, pdf=True, scores=None, area=None):
+def render(m, sub, city, outdir, pdf=True, scores=None, area=None, agent=None):
     """Write one PNG per slide, plus a combined PDF for LinkedIn document posts.
-    Returns the list of paths written."""
+    Returns the list of paths written.
+
+    agent: optional dict (name, phone, email, headshot_path, logo_path) --
+    an Agent.brand_dict() from the web app. Renders on the closing CTA
+    slide (_s6_cta) in place of the generic FNT-only sign-off. None
+    (default) keeps the original generic branding untouched. See rule 72.
+    """
     from playwright.sync_api import sync_playwright
     slug = sub.replace(' ', '_')
-    frags = slides(m, sub, city, scores, area)
+    frags = slides(m, sub, city, scores, area, agent)
     written = []
     with tempfile.TemporaryDirectory(prefix='carousel-') as tmp:
         tdir = pathlib.Path(tmp)
@@ -467,7 +498,7 @@ def render(m, sub, city, outdir, pdf=True, scores=None, area=None):
             if pdf:
                 allp = tdir / 'all.html'
                 allp.write_text(document(m, sub, city, gap=False, scores=scores,
-                                         area=area), encoding='utf-8')
+                                         area=area, agent=agent), encoding='utf-8')
                 pg.goto(allp.resolve().as_uri(), wait_until='networkidle')
                 pg.emulate_media(media='print')
                 pout = f'{outdir}/{slug}_Carousel.pdf'

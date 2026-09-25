@@ -297,8 +297,8 @@ def _N(start=0):
 def sec(n, t, pb=False):
     return f'<div class="sec{" pb" if pb else ""}"><span class="num">{n}</span><h2>{t}</h2></div>'
 
-def cover(sub, city, span):
-    return f'''<div class="cover"><div class="badge">MASTER BRIEF</div>
+def cover(sub, city, span, badge='MASTER BRIEF'):
+    return f'''<div class="cover"><div class="badge">{badge}</div>
 <div class="kick">Subdivision Market Report &#183; Seller &amp; Buyer</div><h1>{sub}</h1>
 <p class="loc">{city}</p><div class="rng">{span}</div>{R.skyline()}</div>'''
 
@@ -707,6 +707,11 @@ taxes, insurance, HOA or vacancy.</div></div>''')
     if rp:
         H.append(f'<div class="take"><span class="tag">Read this first</span><p>{rp}</p></div>')
 
+    # One-pager stops here -- everything above is the dashboard, which
+    # already fits a single printed page on its own (confirmed by rendering
+    # it, not assumed from the arithmetic). See rule 71.
+    one_pager_split = len(H)
+
     # --------------------------------------------------- 02 chance of selling
     H.append(sec(nn(), 'Chance of selling, if priced right', pb=True))
     fn = [("Entered the market", m['n_all'], "ALL LISTINGS IN THE EXPORT"),
@@ -999,12 +1004,30 @@ Mean of the three = <b>{s['power']}</b>. Read the three inputs, not just the hea
     H.append(meth)
     H.append('</body></html>')
 
+    # One-pager: cover + dashboard only, its own badge (not "MASTER BRIEF" --
+    # this isn't it), and a compact disclosure line instead of the full
+    # methodology block, which would overwhelm a single page. H[1] (the
+    # shared cover) is skipped and rebuilt with badge='HIGH-LEVEL BRIEF' so
+    # changing this doesn't also relabel the full Brief's own cover.
+    one_pager_meth = (
+        '<div class="onepagermeth">Figures computed from this export\'s own 365-day activity. '
+        + ('Rent to Price and Growth Outlook are area-level, resolved from Zillow/Census/BLS data '
+           'via this export\'s ZIP codes rather than computed from the export itself. '
+           if (area and (area.get('rent') is not None or area.get('growth') is not None)) else '')
+        + 'See the Full Market Brief for complete methodology and every source. '
+        'Information deemed reliable but not guaranteed.</div>')
+    one_pager_html = (f'<!doctype html><html><head><meta charset="utf-8">'
+                      f'<style>{R.CSS}{EXTRA}</style></head><body>'
+                      + cover(sub, city, span, badge='HIGH-LEVEL BRIEF')
+                      + ''.join(x for x in H[2:one_pager_split] if x)
+                      + one_pager_meth + '</body></html>')
+
     brief_html = ''.join(x for x in H[:brief_split] if x)
     appendix_preamble = (f'<!doctype html><html><head><meta charset="utf-8">'
                         f'<style>{R.CSS}{EXTRA}</style></head><body>'
                         + appendix_cover(sub, city, span))
     appendix_html = appendix_preamble + ''.join(x for x in H[brief_split:] if x)
-    return brief_html, appendix_html
+    return one_pager_html, brief_html, appendix_html
 
 
 def _fd(dd, kind='count'):
@@ -1113,12 +1136,23 @@ def _buyer_marketing(d, m, sub, city, mo):
 # ==================================================================== driver
 def build(csv, sub, city, outdir='/mnt/user-data/outputs', enrich_opts=None,
           audience='agent', showings_paths=None, demo_opts=None,
-          investor_profile=None, investor_opts=None, carousel=False):
+          investor_profile=None, investor_opts=None, carousel=False, tier='full',
+          agent=None):
     """audience: 'agent' (default) or 'salesrep'.
       agent    -- no Showing Activity section; schools/amenities + Census
                   demographics included when enrich_opts/demo_opts supplied.
       salesrep -- Showing Activity included when showings_paths supplied;
                   schools/amenities and demographics are never rendered.
+
+    tier: 'full' (default) writes the Master Brief + its Appendix, same as
+      always. 'one_page' writes ONLY a single-page High-Level Brief instead
+      -- the dashboard section (four dials, six stat tiles, supply ribbon,
+      "Read this first") that already fits one printed page on its own,
+      with a compact one-line disclosure instead of the full methodology
+      block. See rule 71. report_html() always computes all three HTML
+      strings regardless of tier (cheap -- it's just string building); tier
+      only controls which one(s) actually get rendered to PDF, since that's
+      the slow, real-browser-per-page step.
 
     showings_paths: (spl_csv_path, stp_csv_path) tuple, salesrep only. Either
     element may be None. Ignored entirely for the agent audience.
@@ -1145,6 +1179,11 @@ def build(csv, sub, city, outdir='/mnt/user-data/outputs', enrich_opts=None,
     build.py's carousel wiring; master.py never had it until now -- see
     SKILL.md rule 59 and the note on rule 58's PDF/carousel naming mismatch,
     which applies here exactly as it does to build.py's path.
+
+    agent: an Agent.brand_dict()-shaped dict (name, phone, email, optional
+    headshot_path/logo_path) threaded through to the carousel's closing CTA
+    slide when carousel=True. None (default) renders the generic FNT
+    sign-off, unchanged from before this existed -- see rule 72.
     """
     assert audience in ('agent', 'salesrep'), f'unknown audience {audience!r}'
     d = core.load(csv)
@@ -1221,35 +1260,55 @@ def build(csv, sub, city, outdir='/mnt/user-data/outputs', enrich_opts=None,
     for w in area_warnings:
         print(f'[area] {w}')
 
-    brief_html, appendix_html = report_html(d, m, cl, act, exp, sub, city, cfg, auto=auto,
-                       audience=audience, showings_prof=showings_prof, demo=demo,
-                       investor=investor, area=area)
+    one_pager_html, brief_html, appendix_html = report_html(
+        d, m, cl, act, exp, sub, city, cfg, auto=auto,
+        audience=audience, showings_prof=showings_prof, demo=demo,
+        investor=investor, area=area)
     os.makedirs(outdir, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix='brief_')
-    hp = os.path.join(tmp, 'brief.html')
-    open(hp, 'w').write(brief_html)
-    hp_appendix = os.path.join(tmp, 'appendix.html')
-    open(hp_appendix, 'w').write(appendix_html)
     suffix = 'Sales_Brief' if audience == 'salesrep' else 'Master_Brief'
-    out = os.path.join(outdir, f'{sub.replace(" ", "_")}_{suffix}.pdf')
-    out_appendix = os.path.join(outdir, f'{sub.replace(" ", "_")}_{suffix}_Appendix.pdf')
+    slug = sub.replace(" ", "_")
 
-    async def go():
-        from playwright.async_api import async_playwright
-        async with async_playwright() as p:
-            b = await p.chromium.launch()
-            pg = await b.new_page()
-            await pg.goto('file://'+hp)
-            await pg.pdf(path=out, format='Letter', print_background=True)
-            await pg.goto('file://'+hp_appendix)
-            await pg.pdf(path=out_appendix, format='Letter', print_background=True)
-            await b.close()
-    asyncio.run(go())
+    if tier == 'one_page':
+        hp_one = os.path.join(tmp, 'one_page.html')
+        open(hp_one, 'w').write(one_pager_html)
+        out_one = os.path.join(outdir, f'{slug}_High_Level_Brief.pdf')
 
-    paths = [out, out_appendix]
+        async def go():
+            from playwright.async_api import async_playwright
+            async with async_playwright() as p:
+                b = await p.chromium.launch()
+                pg = await b.new_page()
+                await pg.goto('file://' + hp_one)
+                await pg.pdf(path=out_one, format='Letter', print_background=True)
+                await b.close()
+        asyncio.run(go())
+        paths = [out_one]
+    else:
+        hp = os.path.join(tmp, 'brief.html')
+        open(hp, 'w').write(brief_html)
+        hp_appendix = os.path.join(tmp, 'appendix.html')
+        open(hp_appendix, 'w').write(appendix_html)
+        out = os.path.join(outdir, f'{slug}_{suffix}.pdf')
+        out_appendix = os.path.join(outdir, f'{slug}_{suffix}_Appendix.pdf')
+
+        async def go():
+            from playwright.async_api import async_playwright
+            async with async_playwright() as p:
+                b = await p.chromium.launch()
+                pg = await b.new_page()
+                await pg.goto('file://'+hp)
+                await pg.pdf(path=out, format='Letter', print_background=True)
+                await pg.goto('file://'+hp_appendix)
+                await pg.pdf(path=out_appendix, format='Letter', print_background=True)
+                await b.close()
+        asyncio.run(go())
+        paths = [out, out_appendix]
+
     if carousel:
         import carousel as CA
-        paths.extend(CA.render(m, sub, city, outdir, scores=s_scores(d, m, cl), area=area))
+        paths.extend(CA.render(m, sub, city, outdir, scores=s_scores(d, m, cl),
+                               area=area, agent=agent))
 
     return paths, m, s_scores(d, m, cl)
 

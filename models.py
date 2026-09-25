@@ -25,11 +25,42 @@ class Agent(db.Model, UserMixin):
     active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Personalization for the carousel and postcard, set once from /profile
+    # and reused automatically on every generation from then on -- an agent
+    # never re-uploads these. Filenames only (not full paths): the actual
+    # files live under instance/agent_assets/<id>/, built from these at
+    # render time. All nullable -- an agent with none of this set still
+    # generates fine, just with the generic FNT branding, same as before
+    # this feature existed.
+    headshot_filename = db.Column(db.String(255), nullable=True)
+    logo_filename = db.Column(db.String(255), nullable=True)
+    contact_phone = db.Column(db.String(50), nullable=True)
+    contact_email = db.Column(db.String(255), nullable=True)  # public-facing;
+    # deliberately separate from `email` (the login) -- an agent may not want
+    # their login address to be the one printed on a public-facing postcard.
+
     def set_password(self, raw):
         self.password_hash = generate_password_hash(raw)
 
     def check_password(self, raw):
         return check_password_hash(self.password_hash, raw)
+
+    def brand_dict(self, assets_dir):
+        """None if the agent hasn't set anything up -- callers fall back to
+        the generic FNT branding, not a half-filled personalization."""
+        if not (self.headshot_filename or self.logo_filename or
+               self.contact_phone or self.contact_email):
+            return None
+        import os
+        d = {'name': self.name, 'phone': self.contact_phone,
+             'email': self.contact_email or self.email}
+        if self.headshot_filename:
+            p = os.path.join(assets_dir, str(self.id), self.headshot_filename)
+            d['headshot_path'] = p if os.path.exists(p) else None
+        if self.logo_filename:
+            p = os.path.join(assets_dir, str(self.id), self.logo_filename)
+            d['logo_path'] = p if os.path.exists(p) else None
+        return d
 
     # Flask-Login calls this to decide whether a session is still valid.
     # A disabled agent's existing browser session stops working on their

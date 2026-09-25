@@ -231,9 +231,17 @@ h1{{font-size:{_in(0.58)};font-weight:700;color:{INK};letter-spacing:-.01em;line
 </body></html>'''
 
 
-def side_b_html(m, sub, scores=None, area=None):
+def side_b_html(m, sub, scores=None, area=None, agent=None):
     """Mailing side. Left: message panel (dials, stats, brand, EHO) -- fully
     populated, ships as-is. Right: mailing panel -- deliberately BLANK.
+
+    agent: optional dict (name, phone, email, headshot_path, logo_path) --
+    an Agent.brand_dict() from the web app. When set, a compact row (small
+    headshot if provided, name, phone) renders above the existing FNT
+    brand/site line -- added alongside it, not replacing it, since the FNT
+    identity and EHO mark stay mandatory regardless of what an individual
+    agent has personalized. None (default, or an agent who hasn't set
+    anything up) renders exactly as before this existed. See rule 72.
 
     This used to carry a return-address box, an EDDM indicia placeholder, and
     "ECRWSS" / "Local Postal Customer" boilerplate. Removed: this is a shared
@@ -294,7 +302,22 @@ def side_b_html(m, sub, scores=None, area=None):
 .brand{{font-size:{_in(0.155)};font-weight:700;color:{INK};}}
 .site{{font-family:{FONT_M};font-size:{_in(0.10)};color:{PINE};}}
 .eho{{font-size:{_in(0.088)};font-weight:700;letter-spacing:.06em;color:{INK};text-align:right;}}
+.agentrow{{display:flex;align-items:center;gap:{_in(0.14)};margin-top:{_in(0.22)};}}
+.agentphoto{{width:{_in(0.62)};height:{_in(0.62)};border-radius:50%;object-fit:cover;
+  border:2px solid {PAPER};box-shadow:0 2px 8px rgba(16,32,58,.15);flex:0 0 auto;}}
+.agentname{{font-size:{_in(0.155)};font-weight:700;color:{INK};line-height:1.2;}}
+.agentcontact{{font-family:{FONT_M};font-size:{_in(0.085)};color:{PINE};margin-top:{_in(0.02)};}}
 '''
+    agent_html = ''
+    if agent and (agent.get('name') or agent.get('phone') or agent.get('email')):
+        photo = (f'<img class="agentphoto" src="file://{agent["headshot_path"]}" alt="">'
+                if agent.get('headshot_path') else '')
+        contact_bits = [x for x in (agent.get('phone'), agent.get('email')) if x]
+        agent_html = (f'<div class="agentrow">{photo}<div>'
+                     f'<div class="agentname">{HT.escape(agent.get("name") or "")}</div>'
+                     + (f'<div class="agentcontact">{HT.escape(" &#183; ".join(contact_bits))}</div>'
+                        if contact_bits else '')
+                     + '</div></div>')
     return f'''<!DOCTYPE html><html><head><meta charset="utf-8"><style>{css}</style></head><body>
 <div class="canvas">
   <div class="msg">
@@ -304,6 +327,7 @@ def side_b_html(m, sub, scores=None, area=None):
     <div class="dgrid">{faces}</div>
     {miss}
     <div class="statrow">{srow}</div>
+    {agent_html}
     <div class="footline">
       <div><div class="brand">{BR.NAME}</div><div class="site">{BR.SITE}</div></div>
       <div class="eho">{BR.EHO.upper()}</div>
@@ -336,7 +360,7 @@ def _annotated(canvas_html_body_css, trim_w, trim_h, bleed, safe, mail_w=None, b
     return canvas_html_body_css.replace('</body>', svg + '</body>')
 
 
-def render(m, sub, city, outdir, scores=None, area=None, place=None, side_a_variant='ALL'):
+def render(m, sub, city, outdir, scores=None, area=None, place=None, side_a_variant='ALL', agent=None):
     """Writes complete postcard packages: for each front variant, a matching
     {slug}_Postcard_{X}_SideA.png, _SideB.png, _Print.pdf (both sides, exact
     trim+bleed size, no guides -- the actual print-vendor file), and
@@ -361,7 +385,7 @@ def render(m, sub, city, outdir, scores=None, area=None, place=None, side_a_vari
     place = place or city
     slug = sub.replace(' ', '_')
     variants = ['A', 'B', 'C'] if side_a_variant == 'ALL' else [side_a_variant]
-    b_html = side_b_html(m, sub, scores, area)
+    b_html = side_b_html(m, sub, scores, area, agent)
 
     out = []
     with tempfile.TemporaryDirectory(prefix='postcard-') as tmp:
