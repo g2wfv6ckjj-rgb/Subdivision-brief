@@ -57,10 +57,48 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _migrate_schema(db.engine)
         _bootstrap_admin()
 
     register_routes(app)
     return app
+
+
+def _migrate_schema(engine):
+    """Adds any Agent columns that don't exist yet on an EXISTING database
+    file, without touching existing rows. Needed because db.create_all()
+    only creates tables that are missing entirely -- it does nothing when a
+    table already exists but the code has since grown new columns, which is
+    exactly what happens on Render: the persistent disk keeps the same
+    database file across every deploy, so the very first deploy after the
+    Agent model gained headshot_filename/logo_filename/contact_phone/
+    contact_email crashed at startup with "no such column: agent.
+    headshot_filename" -- reproduced locally against a copy of the old
+    schema before writing this fix, not guessed at from the Render log alone.
+    A real project would reach for Alembic/Flask-Migrate; this app is small
+    enough that an explicit, idempotent column check is simpler and adds no
+    dependency. Safe to run on every boot going forward -- a column that's
+    already there is just skipped, and a brand-new database (fresh disk,
+    nothing deployed yet) has every column already via create_all() above,
+    so this loop does nothing at all in that case.
+    """
+    import sqlalchemy as sa
+    inspector = sa.inspect(engine)
+    if 'agent' not in inspector.get_table_names():
+        return  # nothing to patch yet -- create_all() just made it fresh
+    existing = {c['name'] for c in inspector.get_columns('agent')}
+    additions = {
+        'headshot_filename': 'VARCHAR(255)',
+        'logo_filename': 'VARCHAR(255)',
+        'contact_phone': 'VARCHAR(50)',
+        'contact_email': 'VARCHAR(255)',
+    }
+    with engine.connect() as conn:
+        for col, coltype in additions.items():
+            if col not in existing:
+                conn.execute(sa.text(f'ALTER TABLE agent ADD COLUMN {col} {coltype}'))
+                conn.commit()
+                print(f'[migrate] added agent.{col}')
 
 
 def _bootstrap_admin():
