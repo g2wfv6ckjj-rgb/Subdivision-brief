@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Subdivision Brief{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Subdivision Brief</h1>
+  <p class="sub">Upload a 365-day MLS subdivision activity export. Takes about a minute to build.</p>
+  <form method="post" action="{{ url_for('generate') }}" enctype="multipart/form-data"
+        data-working="We're building your Subdivision Brief"
+        data-est="usually about a minute"
+        data-steps="Reading your MLS export|Cleaning and de-duplicating listings|Scoring the market dials|Adding area context|Laying out the brief pages|Rendering the PDF|Finishing any extras you selected">
+    <label for="csv_file">MLS export (.csv)</label>
+    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+
+    <label for="subdivision">Subdivision name</label>
+    <input type="text" id="subdivision" name="subdivision" placeholder="Hilltop" required>
+
+    <label for="city">City, State</label>
+    <input type="text" id="city" name="city" placeholder="Denver, CO" required>
+
+    <label>Brief format</label>
+    <div class="checkline">
+      <input type="radio" id="tier_full" name="brief_tier" value="full" checked>
+      <label for="tier_full" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Full Market Brief (seller + buyer, complete report + companion appendix)
+      </label>
+    </div>
+    <div class="checkline">
+      <input type="radio" id="tier_one" name="brief_tier" value="one_page">
+      <label for="tier_one" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        1-Page High-Level Brief (seller + buyer, the headline numbers only)
+      </label>
+    </div>
+
+    <div class="checkline">
+      <input type="checkbox" id="carousel" name="carousel" checked>
+      <label for="carousel" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Also generate the social carousel (6 slides)
+      </label>
+    </div>
+    <div class="checkline">
+      <input type="checkbox" id="postcard" name="postcard">
+      <label for="postcard" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Also generate the print postcard (all 3 front designs)
+      </label>
+    </div>
+    <div class="checkline">
+      <input type="checkbox" id="newsletter" name="newsletter">
+      <label for="newsletter" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
+        Also generate an email newsletter draft (.html)
+      </label>
+    </div>
+
+    <button class="btn" type="submit">Generate</button>
+  </form>
+  <div class="sub" style="margin:14px 0 0">Carousel and postcard use whatever you've saved in
+  <a href="{{ url_for('profile') }}">My Info</a> — headshot, logo, contact — automatically. Nothing set up yet just uses the generic Fidelity National Title branding.</div>
+</div>
+{% endblock %}

@@ -41,8 +41,11 @@ client.post('/logout')
 r = client.post('/login', data={'email': 'agent1@example.com', 'password': 'agent-test-pw'})
 assert r.status_code == 302, f'agent login failed: {r.status_code}'
 r = client.get('/')
-assert r.status_code == 200 and b'Generate a brief' in r.data
-print('3. agent login + dashboard: OK')
+assert r.status_code == 200 and b'Launch Reports' in r.data
+assert b'Subdivision Brief' in r.data and b'Listing Report' in r.data
+r = client.get('/subdivision')
+assert r.status_code == 200 and b'MLS export (.csv)' in r.data and b'data-working' in r.data
+print('3. agent login + home hub + subdivision form: OK')
 
 # 4. generate a real report from the Hilltop CSV, carousel + postcard both on
 csv_path = '/mnt/user-data/uploads/Hilltop_last_365_days.csv'

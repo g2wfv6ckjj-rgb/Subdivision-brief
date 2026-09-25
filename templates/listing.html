@@ -5,7 +5,10 @@
   <h1>Listing Report</h1>
   <p class="sub">Property analysis, ideal buyer profile, and marketing blueprint for one address — a companion to the subdivision brief, built from a live property lookup instead of an MLS export.</p>
 
-  <form method="post" action="{{ url_for('listing_generate') }}">
+  <form method="post" action="{{ url_for('listing_generate') }}"
+        data-working="We're building your Listing Report"
+        data-est="usually under a minute"
+        data-steps="Looking up the property|Pulling nearby listings|Adding Census and migration data|Building the buyer profile|Writing the marketing copy|Rendering the PDF">
     <label for="address">Property address</label>
     <input type="text" id="address" name="address" placeholder="1380 Bellaire St, Broomfield, CO 80020" required>
 

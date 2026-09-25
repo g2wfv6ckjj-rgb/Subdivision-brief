@@ -188,6 +188,11 @@ def register_routes(app):
                   .order_by(Report.created_at.desc()).limit(15).all())
         return render_template('dashboard.html', reports=reports)
 
+    @app.route('/subdivision')
+    @login_required
+    def subdivision_form():
+        return render_template('subdivision.html')
+
     @app.route('/generate', methods=['POST'])
     @login_required
     def generate():
@@ -203,13 +208,13 @@ def register_routes(app):
 
         if not f or not f.filename:
             flash('Choose an MLS export CSV first.', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('subdivision_form'))
         if Path(f.filename).suffix.lower() not in ALLOWED_EXT:
             flash('That file needs to be a .csv MLS export.', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('subdivision_form'))
         if not sub or not city:
             flash('Subdivision name and city are both required.', 'error')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('subdivision_form'))
 
         report = Report(agent_id=current_user.id, subdivision=sub, city=city, files='')
         db.session.add(report)
@@ -264,7 +269,7 @@ def register_routes(app):
                 db.session.delete(report)
                 db.session.commit()
                 flash(f'Could not build this report: {exc}', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('subdivision_form'))
             except Exception:
                 shutil.rmtree(outdir, ignore_errors=True)
                 db.session.delete(report)
@@ -273,7 +278,7 @@ def register_routes(app):
                 flash('Something went wrong generating this report. '
                      'Double-check the CSV is a subdivision activity export, '
                      'or try again in a moment.', 'error')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('subdivision_form'))
 
         report.files = '\n'.join(Path(p).name for p in paths)
         db.session.commit()

@@ -3,81 +3,116 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Subdivision Brief{% endblock %}</title>
+<title>{% block title %}Real Estate Launch Reports{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#1B2740; --gold:#C7902E; --terracotta:#B85C38; --soft:#7A7061;
-  --line:#E9DFCF; --paper:#FFFDF8; --bg:#FBF6EE;
-  --err:#B3261E; --ok:#5B7A4A;
+  --ink:#10203A; --pine:#1F4B87; --sky:#6FA0D0; --soft:#56657A;
+  --line:#D7DFE9; --paper:#FFFFFF; --bg:#F4F7FB;
+  --err:#B3261E; --ok:#1F6B3E;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
-  font-family:"Poppins",system-ui,sans-serif;line-height:1.45}
-a{color:var(--terracotta)}
+  font-family:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+a{color:var(--pine)}
 header{background:var(--paper);border-bottom:1px solid var(--line);
-  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:10}
-header .brand{font-weight:700;font-size:17px;letter-spacing:-.01em}
-header .brand span{color:var(--terracotta)}
-header .brandsub{font-family:"Lora",Georgia,serif;font-style:italic;font-size:12px;
-  color:var(--soft);margin-top:3px}
-header nav{display:flex;gap:14px;align-items:center;font-size:14px}
-header nav form{margin:0}
-header nav button{background:none;border:none;color:var(--soft);
-  font-family:inherit;font-size:14px;cursor:pointer;padding:0}
+  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;position:sticky;top:0;z-index:10}
+header .brand{font-weight:700;font-size:17px;letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+header .brand span{color:var(--pine)}
+header .brandsub{font-size:12px;color:var(--soft);margin-top:2px}
+header nav{display:flex;column-gap:16px;row-gap:6px;align-items:center;font-size:14px;flex-wrap:wrap}
+header nav a,header nav button{white-space:nowrap}
+@media (max-width:620px){header{flex-direction:column;align-items:flex-start}header nav{width:100%;border-top:1px solid var(--line);padding-top:10px;column-gap:14px}}
+header nav a{text-decoration:none;font-weight:500}
+header nav a:hover{text-decoration:underline}
+header nav form{margin:0;display:inline-flex}
+header nav button{background:none;border:none;color:var(--soft);display:inline;width:auto;
+  text-align:left;font-family:inherit;font-size:14px;cursor:pointer;padding:0;margin:0}
 .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
-.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;
-  padding:24px;margin-bottom:20px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  padding:24px;margin-bottom:20px;box-shadow:0 1px 2px rgba(16,32,58,.04)}
 h1{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
 h2{font-size:17px;margin:0 0 14px}
-.sub{font-family:"Lora",Georgia,serif;color:var(--soft);font-size:14px;margin:0 0 20px}
+.sub{color:var(--soft);font-size:14px;margin:0 0 20px}
 label{display:block;font-size:12.5px;font-weight:600;letter-spacing:.03em;
   color:var(--soft);text-transform:uppercase;margin:14px 0 5px}
 input[type=text],input[type=email],input[type=password],input[type=file]{
-  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
   font-family:inherit;font-size:15px;background:var(--paper);color:var(--ink)}
-input[type=checkbox]{margin-right:8px;accent-color:var(--terracotta)}
+input:focus{outline:2px solid var(--sky);outline-offset:0;border-color:var(--pine)}
+input[type=checkbox],input[type=radio]{margin-right:8px;accent-color:var(--pine)}
 .checkline{display:flex;align-items:center;margin-top:12px;font-size:14.5px}
-.btn{display:inline-block;background:var(--ink);color:#fff;border:none;
-  padding:11px 20px;border-radius:6px;font-family:inherit;font-size:14.5px;
+.btn{display:inline-block;background:var(--ink);color:#fff;border:none;text-decoration:none;
+  padding:11px 20px;border-radius:8px;font-family:inherit;font-size:14.5px;
   font-weight:600;cursor:pointer;margin-top:18px}
-.btn:hover{opacity:.92}
+.btn:hover{background:var(--pine)}
+.btn:disabled{opacity:.6;cursor:wait}
 .btn.secondary{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
 .btn.danger{background:var(--paper);color:var(--err);border:1px solid var(--err)}
-.flash{padding:12px 14px;border-radius:6px;font-size:14px;margin-bottom:16px}
+.flash{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:16px}
 .flash.error{background:#FBEAE9;color:var(--err);border:1px solid #F1C2BE}
-.flash.success{background:#EFF3E7;color:var(--ok);border:1px solid #D3DEC3}
+.flash.success{background:#E9F5EE;color:var(--ok);border:1px solid #BFE3CC}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;
   color:var(--soft);padding:8px 6px;border-bottom:2px solid var(--ink)}
 td{padding:10px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;
   border-radius:99px;letter-spacing:.03em}
-.pill.on{background:#EFF3E7;color:var(--ok)}
-.pill.off{background:#F2EDE2;color:var(--soft)}
+.pill.on{background:#E9F5EE;color:var(--ok)}
+.pill.off{background:#F1F2F5;color:var(--soft)}
+.pill.sub-brief{background:#E7EEF8;color:var(--pine)}
+.pill.listing{background:#10203A;color:#fff}
 .filelist{list-style:none;padding:0;margin:0}
 .filelist li{padding:10px 0;border-bottom:1px solid var(--line)}
 .filelist li:last-child{border-bottom:none}
-.mono{font-family:"DejaVu Sans Mono",monospace;font-size:12.5px}
+.mono{font-family:"DejaVu Sans Mono",ui-monospace,monospace;font-size:12.5px}
 footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
+
+/* Home: the two product buttons */
+.launch{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-bottom:20px}
+.tile{display:block;background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  padding:22px;text-decoration:none;color:var(--ink);border-top:4px solid var(--pine);
+  box-shadow:0 1px 2px rgba(16,32,58,.04);transition:transform .12s,box-shadow .12s}
+.tile:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,32,58,.10)}
+.tile.dark{background:var(--ink);color:#fff;border-top-color:var(--sky)}
+.tile .kicker{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sky)}
+.tile h2{font-size:20px;margin:6px 0 6px}
+.tile p{font-size:13.5px;margin:0 0 14px;color:var(--soft)}
+.tile.dark p{color:#C9D6E8}
+.tile .go{font-weight:600;font-size:14px;color:var(--pine)}
+.tile.dark .go{color:#fff}
+
+/* "We're working on it" overlay -- shown by any form with data-working */
+#working{position:fixed;inset:0;background:rgba(16,32,58,.72);display:none;
+  align-items:center;justify-content:center;z-index:100;padding:20px}
+#working.on{display:flex}
+#working .box{background:var(--paper);border-radius:14px;max-width:420px;width:100%;
+  padding:28px 26px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+#working h2{margin:0 0 6px;font-size:19px}
+#working .msg{color:var(--soft);font-size:14px;min-height:21px;margin:0 0 18px}
+#working .bar{height:6px;background:#E7EEF8;border-radius:99px;overflow:hidden;position:relative}
+#working .bar i{position:absolute;top:0;bottom:0;width:38%;border-radius:99px;
+  background:linear-gradient(90deg,var(--pine),var(--sky));animation:slide 1.4s ease-in-out infinite}
+@keyframes slide{0%{left:-38%}100%{left:100%}}
+#working .meta{font-size:12.5px;color:var(--soft);margin-top:14px}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <div class="brand">Subdivision <span>Brief</span></div>
+    <a class="brand" href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}">Real Estate <span>Launch Reports</span></a>
     <div class="brandsub">Xiaohui Janecek &middot; Fidelity National Title</div>
   </div>
   {% if current_user.is_authenticated %}
   <nav>
-    <span class="mono">{{ current_user.name }}</span>
-    {% if current_user.is_admin %}<a href="{{ url_for('admin_home') }}">Admin</a>{% endif %}
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('dashboard') }}">Home</a>
+    <a href="{{ url_for('subdivision_form') }}">Subdivision Brief</a>
     <a href="{{ url_for('listing_form') }}">Listing Report</a>
     <a href="{{ url_for('profile') }}">My Info</a>
+    {% if current_user.is_admin %}<a href="{{ url_for('admin_home') }}">Admin</a>{% endif %}
     <form method="post" action="{{ url_for('logout') }}"><button type="submit">Log out</button></form>
   </nav>
   {% endif %}
@@ -91,5 +126,45 @@ footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
   {% block content %}{% endblock %}
 </div>
 <footer>Equal Housing Opportunity &middot; www.fntcolorado.com</footer>
+
+<div id="working" role="alertdialog" aria-live="polite" aria-label="Working on your report">
+  <div class="box">
+    <h2 id="w-title">We're working on it</h2>
+    <p class="msg" id="w-msg">&nbsp;</p>
+    <div class="bar"><i></i></div>
+    <div class="meta"><span id="w-time">0:00</span> elapsed &middot; <span id="w-est"></span><br>Please keep this tab open.</div>
+  </div>
+</div>
+<script>
+/* Any <form data-working="Title" data-steps="a|b|c" data-est="..."> shows the
+   overlay on submit. The request itself is an ordinary form POST, so the page
+   the server returns (the finished report, or an error message) replaces this
+   automatically. The step lines rotate on a timer: they describe what the
+   tool does, not live progress from the server. */
+(function(){
+  var box = document.getElementById('working'), timer = null, rot = null;
+  function hide(){ box.classList.remove('on'); clearInterval(timer); clearInterval(rot);
+    document.querySelectorAll('form[data-working] button[type=submit]').forEach(function(b){ b.disabled = false; }); }
+  document.querySelectorAll('form[data-working]').forEach(function(f){
+    f.addEventListener('submit', function(){
+      var steps = (f.dataset.steps || '').split('|').filter(Boolean), i = 0, t0 = Date.now();
+      document.getElementById('w-title').textContent = f.dataset.working;
+      document.getElementById('w-est').textContent = f.dataset.est || '';
+      var msg = document.getElementById('w-msg');
+      msg.textContent = steps[0] || '';
+      rot = setInterval(function(){ if (i < steps.length - 1) msg.textContent = steps[++i]; }, 9000);
+      timer = setInterval(function(){
+        var s = Math.floor((Date.now() - t0) / 1000);
+        document.getElementById('w-time').textContent = Math.floor(s/60) + ':' + ('0' + s%60).slice(-2);
+      }, 1000);
+      f.querySelectorAll('button[type=submit]').forEach(function(b){ b.disabled = true; });
+      box.classList.add('on');
+    });
+  });
+  // Coming back with the browser's Back button can restore this page from
+  // cache with the overlay still showing -- clear it.
+  window.addEventListener('pageshow', function(e){ if (e.persisted) hide(); });
+})();
+</script>
 </body>
 </html>

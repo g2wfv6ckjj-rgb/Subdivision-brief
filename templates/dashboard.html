@@ -1,68 +1,34 @@
 {% extends "base.html" %}
-{% block title %}Generate a brief{% endblock %}
+{% block title %}Real Estate Launch Reports{% endblock %}
 {% block content %}
-<div class="card">
-  <h1>Generate a brief</h1>
-  <p class="sub">Upload a 365-day MLS subdivision activity export. Takes about a minute to build.</p>
-  <form method="post" action="{{ url_for('generate') }}" enctype="multipart/form-data">
-    <label for="csv_file">MLS export (.csv)</label>
-    <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+<h1>What are we launching today?</h1>
+<p class="sub">Pick a report to get started.</p>
 
-    <label for="subdivision">Subdivision name</label>
-    <input type="text" id="subdivision" name="subdivision" placeholder="Hilltop" required>
-
-    <label for="city">City, State</label>
-    <input type="text" id="city" name="city" placeholder="Denver, CO" required>
-
-    <label>Brief format</label>
-    <div class="checkline">
-      <input type="radio" id="tier_full" name="brief_tier" value="full" checked>
-      <label for="tier_full" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
-        Full Market Brief (seller + buyer, complete report + companion appendix)
-      </label>
-    </div>
-    <div class="checkline">
-      <input type="radio" id="tier_one" name="brief_tier" value="one_page">
-      <label for="tier_one" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
-        1-Page High-Level Brief (seller + buyer, the headline numbers only)
-      </label>
-    </div>
-
-    <div class="checkline">
-      <input type="checkbox" id="carousel" name="carousel" checked>
-      <label for="carousel" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
-        Also generate the social carousel (6 slides)
-      </label>
-    </div>
-    <div class="checkline">
-      <input type="checkbox" id="postcard" name="postcard">
-      <label for="postcard" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
-        Also generate the print postcard (all 3 front designs)
-      </label>
-    </div>
-    <div class="checkline">
-      <input type="checkbox" id="newsletter" name="newsletter">
-      <label for="newsletter" style="margin:0;text-transform:none;font-weight:400;color:var(--ink)">
-        Also generate an email newsletter draft (.html)
-      </label>
-    </div>
-
-    <button class="btn" type="submit">Generate</button>
-  </form>
-  <div class="sub" style="margin:14px 0 0">Carousel and postcard use whatever you've saved in
-  <a href="{{ url_for('profile') }}">My Info</a> — headshot, logo, contact — automatically. Nothing set up yet just uses the generic Fidelity National Title branding.</div>
+<div class="launch">
+  <a class="tile" href="{{ url_for('subdivision_form') }}">
+    <div class="kicker">MLS export</div>
+    <h2>Subdivision Brief</h2>
+    <p>Upload a 365-day subdivision export for a seller and buyer market brief, plus optional carousel, postcard and newsletter.</p>
+    <span class="go">Start a brief &rarr;</span>
+  </a>
+  <a class="tile dark" href="{{ url_for('listing_form') }}">
+    <div class="kicker">One address</div>
+    <h2>Listing Report</h2>
+    <p>Enter a property address for valuation, nearby listings, area demographics, buyer profile and marketing copy.</p>
+    <span class="go">Start a report &rarr;</span>
+  </a>
 </div>
 
 <div class="card">
   <h2>Your recent reports</h2>
   {% if reports %}
   <table>
-    <thead><tr><th>Subdivision</th><th>City</th><th>Generated</th><th></th></tr></thead>
+    <thead><tr><th>Report</th><th>Type</th><th>Generated</th><th></th></tr></thead>
     <tbody>
       {% for r in reports %}
       <tr>
-        <td>{{ r.subdivision }}</td>
-        <td>{{ r.city }}</td>
+        <td>{{ r.subdivision }}{% if r.city %}<br><span class="mono" style="color:var(--soft)">{{ r.city }}</span>{% endif %}</td>
+        <td>{% if 'Listing_Report' in (r.files or '') %}<span class="pill listing">Listing</span>{% else %}<span class="pill sub-brief">Subdivision</span>{% endif %}</td>
         <td class="mono">{{ r.created_at.strftime('%b %-d, %Y %-I:%M %p') }}</td>
         <td><a href="{{ url_for('report_detail', report_id=r.id) }}">Open</a></td>
       </tr>
@@ -70,7 +36,7 @@
     </tbody>
   </table>
   {% else %}
-  <p class="sub" style="margin:0">Nothing yet — generate your first brief above.</p>
+  <p class="sub" style="margin:0">Nothing yet. Pick a report above to generate your first one.</p>
   {% endif %}
 </div>
 {% endblock %}
