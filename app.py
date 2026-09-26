@@ -176,6 +176,11 @@ def register_routes(app):
             flash('Incorrect email or password.', 'error')
         return render_template('login.html')
 
+    @app.route('/legal')
+    def legal():
+        import datetime
+        return render_template('legal.html', legal_updated=datetime.date.today().strftime('%B %-d, %Y'))
+
     @app.route('/logout', methods=['POST'])
     @login_required
     def logout():

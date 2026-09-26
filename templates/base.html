@@ -85,6 +85,21 @@ footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
 .tile .go{font-weight:600;font-size:14px;color:var(--pine)}
 .tile.dark .go{color:#fff}
 
+/* Landing page hero */
+.hero{padding:8px 4px 26px}
+.hero .eyebrow{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--pine);margin:0 0 10px}
+.hero h1{font-size:38px;line-height:1.08;margin:0 0 6px;letter-spacing:-.02em}
+.hero h1 span{color:var(--pine)}
+.hero .role{font-size:14.5px;color:var(--soft);margin:0 0 18px}
+.hero .tagline{font-size:17px;color:var(--ink);max-width:520px;margin:0 0 22px;line-height:1.5}
+.hero .feats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:4px}
+.hero .feat{background:var(--paper);border:1px solid var(--line);border-radius:99px;
+  padding:8px 14px;font-size:13px;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:7px}
+.hero .feat b{color:var(--pine)}
+.landing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:32px;align-items:start;margin-top:10px}
+.landing-grid>:first-child{flex:1.15}
+
 /* "We're working on it" overlay -- shown by any form with data-working */
 #working{position:fixed;inset:0;background:rgba(16,32,58,.72);display:none;
   align-items:center;justify-content:center;z-index:100;padding:20px}
@@ -125,7 +140,7 @@ footer{text-align:center;color:var(--soft);font-size:12px;padding:20px}
   {% endwith %}
   {% block content %}{% endblock %}
 </div>
-<footer>Equal Housing Opportunity &middot; www.fntcolorado.com</footer>
+<footer>Equal Housing Opportunity &middot; www.fntcolorado.com &middot; <a href="{{ url_for('legal') }}">Legal Disclaimer</a></footer>
 
 <div id="working" role="alertdialog" aria-live="polite" aria-label="Working on your report">
   <div class="box">

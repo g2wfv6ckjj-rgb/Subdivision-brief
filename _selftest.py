@@ -420,4 +420,14 @@ assert _r.status_code == 302 and _r.headers['Location'].endswith('/subdivision')
 master.build = _orig_master_build
 print('26. Revise & regenerate flow (persistence, pre-fill, no re-upload, ownership check): OK')
 
+# 27. Landing page (unauthenticated), Legal Disclaimer (no login required),
+# and the footer link that ties them together.
+_r = appmod.app.test_client().get('/login')
+assert b'Xiaohui Janecek' in _r.data and b'Xiaohui.Janecek@fnf.com' in _r.data
+assert b'Contact your admin' not in _r.data
+_r = appmod.app.test_client().get('/legal')
+assert _r.status_code == 200 and b'Fair Housing' in _r.data and b'AI-Assisted' in _r.data
+assert b'Legal Disclaimer' in client.get('/').data  # footer link while authenticated too
+print('27. Landing page + public Legal Disclaimer + footer link: OK')
+
 print('\nALL CHECKS PASSED')

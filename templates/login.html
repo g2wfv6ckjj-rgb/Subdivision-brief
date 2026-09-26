@@ -1,15 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Log in{% endblock %}
+{% block title %}Real Estate Launch Reports{% endblock %}
 {% block content %}
-<div class="card" style="max-width:400px;margin:40px auto 0">
-  <h1>Log in</h1>
-  <p class="sub">Real Estate Launch Reports access is per agent. Contact your admin if you don't have a login yet.</p>
-  <form method="post">
-    <label for="email">Email</label>
-    <input type="email" id="email" name="email" required autofocus>
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" required>
-    <button class="btn" type="submit" style="width:100%">Log in</button>
-  </form>
+<div class="landing-grid">
+  <div class="hero">
+    <div class="eyebrow">Real Estate Launch Reports</div>
+    <h1>Xiaohui Janecek<br><span>builds better data for your next listing.</span></h1>
+    <p class="role">Director of Sales Strategy &middot; Fidelity National Title Colorado</p>
+    <p class="tagline">A subdivision market brief or a full listing report &mdash; property
+    valuation, nearby comps, real Census and IRS data, and ready-to-use marketing copy
+    &mdash; built in minutes from a single upload or address, not days of manual research.</p>
+    <div class="feats">
+      <div class="feat">&#128196; <b>Subdivision Brief</b> &mdash; seller &amp; buyer market analysis</div>
+      <div class="feat">&#127968; <b>Listing Report</b> &mdash; valuation, buyer profile, marketing kit</div>
+      <div class="feat">&#128202; Real Census, IRS &amp; market data, every time</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:2px">
+    <h2 style="margin-bottom:2px">Agent Log In</h2>
+    <p class="sub">Access is by invitation.<br>For a login, email
+    <a href="mailto:Xiaohui.Janecek@fnf.com">Xiaohui.Janecek@fnf.com</a>.</p>
+    <form method="post">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+      <button class="btn" type="submit" style="width:100%">Log in</button>
+    </form>
+  </div>
 </div>
 {% endblock %}
